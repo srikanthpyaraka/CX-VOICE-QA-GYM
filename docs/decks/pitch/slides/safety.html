@@ -21,5 +21,7 @@
 <p style="font-size:30px;line-height:1.45;color:#DDE3EA">Test calls use <b>pretend</b> back-end systems, so no real orders or accounts are touched</p>
 </div>
 </div>
-<aside>Address risk head-on. The tool changes the bot’s instructions while it experiments, so it is pointed at a copy of the bot, and it asks you to confirm that before it starts. It saves the original instructions before touching anything and restores them at the end, even if something crashes. An improved version only goes anywhere when a person reviews it and clicks Apply, and moving it to the live bot still goes through the normal release process. During tests, the bot’s connections to order systems are swapped for pretend versions, so no real customer data is used.</aside>
+<aside>RISK AND CONTROL (45 sec). Three safeguards. One: it only coaches a copy of a bot, never the live one. The original instructions are saved first and put back automatically, even after a crash. Two: nothing changes without a person. You review the diff and click Apply, and it still goes through our normal release process. Three: test data, not customer data. It runs inside our own Google Cloud project, the app is private behind Google sign-in, and every run is kept as an audit trail.
+IF ASKED “what if it breaks a live bot?”: It can’t touch one; see point one.
+IF ASKED “is customer data involved?”: No. Fictitious test data, inside our own project, and results go to BigQuery only if we switch that on.</aside>
 </section>

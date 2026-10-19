@@ -31,5 +31,8 @@
 </ul>
 </div>
 </div>
-<aside>Be straightforward about maturity. The application is built and has now run end to end against a real Google CX Agent Studio voice agent that we created in our own project: six simulated calls, five passed, and the scorer found real rule breaks. The code is on GitHub. Running it surfaced practical lessons. A new project’s default quota allowed roughly one agent reply per minute; we requested an increase and it was approved within minutes. One coaching round then raised the practice score from 0.58 to 0.80 and the exam score from 0.78 to 0.85. Scores do vary from run to run, so we use repeated trials before trusting small gains. Remaining limits: simulated callers cannot interrupt the bot, keypad input is not simulated, and the AI scorecard should still be checked against a human reviewer before anyone relies on the numbers.</aside>
+<aside>WHY NOW (30 sec). It’s already built, it’s on GitHub, and it deploys to Cloud Run with one command. The one setup snag we hit, a default usage quota, was approved by Google within minutes. So we’re not asking to fund a build; we’re asking to point it at one real agent.
+BE STRAIGHT ABOUT LIMITS: AI scores need a human spot-check, which the pilot does. Callers can’t interrupt the bot mid-sentence yet, keypad tones aren’t simulated, and it only supports CX Agent Studio agents.
+IF ASKED “we already have Google’s built-in evals”: those check fixed scripts and expected answers. This adds callers who improvise, phone-quality checks, a coach that fixes the bot, and exam calls that catch over-fitting, on the same CX Agent Studio platform.
+IF ASKED “who maintains it?”: a small codebase with tests and a step-by-step guide; ongoing work is mainly writing test calls, and the generator does most of that.</aside>
 </section>
