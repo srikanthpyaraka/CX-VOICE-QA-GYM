@@ -30,7 +30,7 @@ and keeps a rewrite only when the scores go up.
 | `tests/` | Offline tests of the whole loop with a fake agent and fake Gemini |
 | `docs/live-demo/` | A presenter page that replays a recorded real run (calls, tool calls, verdicts) |
 | `docs/decks/` | Sources for the pitch deck and the tab-by-tab walkthrough deck |
-| `docs/screenshots/` | App screenshots used in the walkthrough deck |
+| `docs/screenshots/` | App screenshots: `real-run/` from the live demo agent, the rest from the labelled demo-data run |
 | `docs/demo-data/` | The script that generates the clearly labelled demo run used for early screenshots |
 | `Dockerfile` | Container for Cloud Run (see below) |
 
