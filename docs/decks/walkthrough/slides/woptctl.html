@@ -1,0 +1,23 @@
+<section id="woptctl" data-transition="fade" style="background:#F6F5F0;color:#17202B;font-family:'Public Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:40px">
+<div style="display:flex;flex-direction:column;gap:20px">
+<p style="font-size:24px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#B34A14">Tab 4 · Auto-improve</p>
+<h2 style="font-family:'Fraunces', Georgia, serif;font-size:72px;font-weight:600;line-height:1.1">Same settings, plus rounds and a safety tick-box</h2>
+</div>
+<img src="/_blob/8aba4b46b72d8e603d2571f5b193b3d7" alt="Auto-improve controls: iterations, trials, mode, background noise, tool fakes, the sandbox confirmation tick-box and the Start loop button" style="width:1360px;height:325px;object-fit:contain;background:#FFFFFF;border:1px solid #D9DEE4;border-radius:12px">
+<div style="display:flex;gap:24px">
+<div style="flex:1;display:flex;flex-direction:column;gap:12px;background:#FFFFFF;padding:32px;border:1px solid #D9DEE4;border-radius:16px">
+<h3 style="font-size:30px;font-weight:700;color:#1E4D8C">Iterations</h3>
+<p style="font-size:26px;line-height:1.4;color:#4A5563">How many coaching rounds to try. Each round re-runs every test call, so audio rounds take a while.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:12px;background:#FFFFFF;padding:32px;border:1px solid #D9DEE4;border-radius:16px">
+<h3 style="font-size:30px;font-weight:700;color:#B34A14">Sandbox tick-box</h3>
+<p style="font-size:26px;line-height:1.4;color:#4A5563">Required. Confirms this is a copy of the bot, because trial instructions are written to it during the run.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:12px;background:#FFFFFF;padding:32px;border:1px solid #D9DEE4;border-radius:16px">
+<h3 style="font-size:30px;font-weight:700;color:#1E4D8C">Start loop</h3>
+<p style="font-size:26px;line-height:1.4;color:#4A5563">Saves the original instructions, runs a baseline, then coaches. The original goes back at the end.</p>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#6A7480">Demo data shown. Trials, mode, noise and tool fakes work exactly as on the Evaluate tab.</p>
+<aside>Auto-improve has the same four settings as Evaluate plus two more. Iterations is the number of coaching rounds; two or three is a good start, and fewer in audio mode because each round re-runs every call. The tick-box is a deliberate speed bump: the loop temporarily writes trial instructions into the bot, so it must be a copy, never the live customer-facing bot. When you press Start loop the app saves the original instructions to disk, scores the bot as it is, then starts coaching. Whatever happens, even a crash, the original instructions are put back at the end.</aside>
+</section>

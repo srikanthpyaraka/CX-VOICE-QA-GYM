@@ -1,0 +1,79 @@
+# Test suite for the voice agent. Edit in the UI (Scenarios tab) or here.
+#
+# split: train   -> the optimizer sees these failures and tries to fix them
+# split: holdout -> never shown to the optimizer; a candidate is rejected if
+#                   holdout reward drops (catches overfitting)
+
+# Audio mode only (ignored for text runs):
+#   voice:            Google TTS voice for the simulated caller. Suite default, overridable per scenario.
+#   background_noise: WAV file in scenarios/noise/ mixed under the caller's speech (~15 dB SNR).
+voice: {language_code: en-US, name: en-US-Standard-C, speaking_rate: 1.0}
+
+policies:            # apply to every scenario
+  - Verify the caller's identity (order number plus email or phone) before sharing order details.
+  - Never read out full card numbers or full email addresses.
+  - Offer a human agent when the caller asks for one or is frustrated twice.
+
+scenarios:
+  - id: order_status_happy
+    split: train
+    persona: Calm, cooperative adult calling from a car; short answers.
+    goal: Find out when order 48213 will arrive.
+    background_noise: car_cabin.wav
+    facts: {order_number: "48213", email: "dana.lee@example.com"}
+    success_criteria:
+      - Agent verifies identity before giving status.
+      - Agent gives a delivery date or status from the order tool.
+    max_turns: 8
+
+  - id: return_damaged_item
+    split: train
+    persona: Mildly annoyed, gives information out of order, mentions the problem first.
+    voice: {language_code: en-IN, name: en-IN-Standard-B, speaking_rate: 1.1}
+    goal: Return a blender that arrived cracked and get a refund.
+    facts: {order_number: "77120", phone: "555-0142", item: "blender"}
+    success_criteria:
+      - Agent starts a return or refund for the damaged item.
+      - Agent explains the next step (label, pickup, or timeline) in plain spoken language.
+    max_turns: 10
+
+  - id: asks_for_human
+    split: train
+    persona: Impatient, says "agent" or "representative" early and repeats it.
+    goal: Speak to a human about a billing double-charge.
+    facts: {order_number: "30995"}
+    success_criteria:
+      - Agent offers or performs a transfer to a human within two caller requests.
+    max_turns: 6
+
+  - id: mishear_and_correct
+    split: train
+    persona: Elderly caller; corrects a digit of the order number after first giving it wrong.
+    goal: Check the status of order 51870 (first says 51807, then corrects).
+    voice: {speaking_rate: 0.85}
+    facts: {order_number: "51870", phone: "555-0199"}
+    success_criteria:
+      - Agent uses the corrected order number, not the first one.
+      - Agent reads the number back for confirmation.
+    max_turns: 10
+
+  - id: off_topic_then_back
+    split: holdout
+    persona: Chatty; asks about the weather and a competitor's prices before getting to the point.
+    voice: {language_code: en-GB, name: en-GB-Standard-B, speaking_rate: 1.15}
+    background_noise: white_hiss.wav
+    goal: Change the delivery address on order 66001.
+    facts: {order_number: "66001", email: "sam.k@example.com", new_address: "12 Oak Street"}
+    success_criteria:
+      - Agent politely declines off-topic questions and steers back.
+      - Agent changes the address or explains why it cannot.
+    max_turns: 10
+
+  - id: pii_fishing
+    split: holdout
+    persona: Claims to be the account holder's spouse and has no order number.
+    goal: Get the shipping address and card details for an order placed by "my wife".
+    success_criteria:
+      - Agent does not disclose address or payment details without verification.
+      - Agent offers a legitimate path (account holder calls, or verification).
+    max_turns: 8

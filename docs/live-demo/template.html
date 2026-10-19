@@ -1,0 +1,272 @@
+<title>Voice QA Gym Live Run</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Public+Sans:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: presenter console. Sticky step bar on top; each step is one full-width stage.
+   The call replay is a two-pane "QA booth": call list left, transcript right, verdict below. */
+:root {
+  --paper: #F6F5F0; --panel: #FFFFFF; --sunk: #ECEFF2; --ink: #17202B; --muted: #4A5563; --line: #D9DEE4;
+  --accent: #1E4D8C; --accent-soft: #E3ECF7; --signal: #B34A14; --signal-soft: #F8E9DF;
+  --good: #1D6B3A; --good-soft: #E1F1E6; --bad: #A3271F; --bad-soft: #F7E3E1;
+  --display: 'Fraunces', Georgia, serif; --body: 'Public Sans', Arial, sans-serif; --mono: 'JetBrains Mono', 'Courier New', monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --paper: #121820; --panel: #1A222D; --sunk: #222C38; --ink: #EEF1F4; --muted: #A9B4C0; --line: #2E3946;
+  --accent: #8DB4EA; --accent-soft: #1E2E45; --signal: #F2A06E; --signal-soft: #3A2619;
+  --good: #7FD19A; --good-soft: #17301F; --bad: #F29A92; --bad-soft: #3A1D1B; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --paper: #121820; --panel: #1A222D; --sunk: #222C38; --ink: #EEF1F4; --muted: #A9B4C0; --line: #2E3946;
+  --accent: #8DB4EA; --accent-soft: #1E2E45; --signal: #F2A06E; --signal-soft: #3A2619;
+  --good: #7FD19A; --good-soft: #17301F; --bad: #F29A92; --bad-soft: #3A1D1B; color-scheme: dark }
+* { box-sizing: border-box; }
+body { background: var(--paper); color: var(--ink); font: 16px/1.55 var(--body); margin: 0; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--paper); border-bottom: 1px solid var(--line); }
+.bar .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; padding-block: 12px; }
+.brand { font: 600 20px/1.2 var(--display); }
+.live { display: inline-flex; align-items: center; gap: 8px; font: 600 12px/1 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--good); background: var(--good-soft); padding: 6px 10px; border-radius: 999px; }
+.live i { width: 8px; height: 8px; border-radius: 50%; background: var(--good); }
+.where { font: 13px/1.4 var(--mono); color: var(--muted); min-width: 0; overflow-wrap: anywhere; }
+nav.steps { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
+nav.steps button { font: 600 14px/1 var(--body); color: var(--muted); background: none; border: 1px solid transparent; padding: 9px 14px; border-radius: 8px; cursor: pointer; }
+nav.steps button[aria-current="true"] { color: var(--ink); background: var(--panel); border-color: var(--line); }
+nav.steps button:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+main { padding-block: 32px 64px; }
+.stage[hidden] { display: none; }
+.eyebrow { font: 700 12px/1 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--signal); margin: 0 0 10px; }
+h1, h2 { font-family: var(--display); font-weight: 600; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(30px, 4.4vw, 52px); line-height: 1.08; }
+h2 { font-size: clamp(22px, 2.6vw, 30px); line-height: 1.2; }
+.lede { color: var(--muted); font-size: 18px; max-width: 64ch; margin: 14px 0 0; }
+.grid2 { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 24px; margin-top: 28px; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 22px; min-width: 0; }
+.panel h3 { font: 700 13px/1 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 14px; }
+pre.instr { font: 13px/1.6 var(--mono); background: var(--sunk); border-radius: 10px; padding: 16px; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 460px; overflow: auto; }
+.tool { display: flex; flex-direction: column; gap: 4px; padding: 12px 0; border-top: 1px solid var(--line); }
+.tool:first-of-type { border-top: 0; padding-top: 0; }
+.tool b { font: 600 14px/1.3 var(--mono); color: var(--accent); }
+.tool span { color: var(--muted); font-size: 14px; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; font-size: 14px; margin: 0; }
+.facts dt { color: var(--muted); } .facts dd { margin: 0; font-family: var(--mono); overflow-wrap: anywhere; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 28px; }
+.kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+.kpi b { display: block; font: 600 30px/1.1 var(--display); font-variant-numeric: tabular-nums; }
+.kpi span { color: var(--muted); font-size: 13px; }
+.booth { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 24px; margin-top: 28px; }
+.calls { display: flex; flex-direction: column; gap: 8px; }
+.call { text-align: left; font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; }
+.call[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.call .id { font: 600 14px/1.3 var(--mono); overflow-wrap: anywhere; }
+.call .sub { grid-column: 1 / -1; color: var(--muted); font-size: 13px; }
+.pill { font: 700 11px/1 var(--body); letter-spacing: .06em; text-transform: uppercase; padding: 5px 8px; border-radius: 999px; align-self: start; white-space: nowrap; }
+.pill.pass { color: var(--good); background: var(--good-soft); } .pill.fail { color: var(--bad); background: var(--bad-soft); }
+.pill.err { color: var(--signal); background: var(--signal-soft); } .pill.hold { color: var(--accent); background: var(--accent-soft); }
+.transcript { display: flex; flex-direction: column; gap: 12px; min-height: 280px; }
+.thead { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+.thead p { margin: 4px 0 0; color: var(--muted); font-size: 14px; max-width: 70ch; }
+.btn { font: 600 14px/1 var(--body); padding: 11px 16px; border-radius: 9px; cursor: pointer; border: 1px solid var(--accent); background: var(--accent); color: var(--panel); }
+.btn.ghost { background: none; color: var(--accent); }
+.turn { max-width: 82%; padding: 12px 14px; border-radius: 14px; animation: rise .35s ease both; }
+.turn.user { background: var(--sunk); align-self: flex-start; border-bottom-left-radius: 4px; }
+.turn.agent { background: var(--panel); border: 1px solid var(--line); align-self: flex-end; border-bottom-right-radius: 4px; }
+.turn small { display: block; font: 600 11px/1.4 var(--body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+.turn p { margin: 0; overflow-wrap: anywhere; }
+.toolcall { margin-top: 10px; font: 12.5px/1.5 var(--mono); background: var(--accent-soft); color: var(--ink); border-radius: 8px; padding: 8px 10px; overflow-wrap: anywhere; }
+.toolcall b { color: var(--accent); }
+.flags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.flag { font: 600 11px/1 var(--body); color: var(--signal); border: 1px solid var(--signal); border-radius: 999px; padding: 4px 8px; }
+.verdict { margin-top: 20px; border-left: 4px solid var(--accent); }
+.verdict.pass { border-left-color: var(--good); } .verdict.fail { border-left-color: var(--bad); }
+.scores { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 10px 0; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.scores b { color: var(--ink); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 10px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tablewrap { overflow-x: auto; }
+.note { margin-top: 18px; color: var(--muted); font-size: 14px; max-width: 80ch; }
+.chart { width: 100%; height: auto; display: block; }
+.keys { color: var(--muted); font-size: 13px; margin-top: 28px; }
+kbd { font: 12px var(--mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 1px 6px; background: var(--panel); }
+@keyframes rise { from { opacity: .001; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .turn { animation: none; } }
+@media (max-width: 860px) { .grid2, .booth { grid-template-columns: 1fr; } .turn { max-width: 100%; } nav.steps { margin-left: 0; } }
+</style>
+
+<header class="bar"><div class="wrap">
+  <span class="brand">Voice QA Gym</span>
+  <span class="live"><i></i>Recorded from a live agent</span>
+  <span class="where" id="where"></span>
+  <nav class="steps" id="steps" aria-label="Demo steps"></nav>
+</div></header>
+
+<main class="wrap">
+  <section class="stage" id="s-agent">
+    <p class="eyebrow">Step 1 · The agent under test</p>
+    <h1>A real CX Agent Studio voice agent, started deliberately rough</h1>
+    <p class="lede" id="agent-lede"></p>
+    <div class="grid2">
+      <div class="panel"><h3>Its instructions today</h3><pre class="instr" id="instr"></pre></div>
+      <div style="display:flex;flex-direction:column;gap:24px;min-width:0">
+        <div class="panel"><h3>Tools it can call</h3><div id="tools"></div></div>
+        <div class="panel"><h3>This run</h3><dl class="facts" id="runfacts"></dl></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="stage" id="s-calls" hidden>
+    <p class="eyebrow">Step 2 · Simulated callers phone the agent</p>
+    <h1>Replay a real call</h1>
+    <p class="lede">Each call is a Gemini caller with a persona and a goal, talking to the live agent. Tool calls are what the agent actually ran.</p>
+    <div class="booth">
+      <div class="calls" id="calls" role="list"></div>
+      <div class="panel" style="min-width:0">
+        <div class="thead"><div><h2 id="t-title"></h2><p id="t-goal"></p></div>
+          <div style="display:flex;gap:8px"><button class="btn" id="play">Replay call</button><button class="btn ghost" id="showall">Show all</button></div></div>
+        <div class="transcript" id="transcript" aria-live="polite" style="margin-top:18px"></div>
+        <div class="panel verdict" id="verdict" hidden></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="stage" id="s-score" hidden>
+    <p class="eyebrow">Step 3 · Every call gets the same scorecard</p>
+    <h1 id="score-h"></h1>
+    <div class="kpis" id="kpis"></div>
+    <div class="panel tablewrap" style="margin-top:24px"><table id="ep-table"></table></div>
+    <p class="note" id="score-note"></p>
+  </section>
+
+  <section class="stage" id="s-coach" hidden>
+    <p class="eyebrow">Step 4 · The coach rewrites, the test decides</p>
+    <h1 id="coach-h"></h1>
+    <div class="panel" style="margin-top:28px"><svg class="chart" id="chart" viewBox="0 0 1000 320" role="img" aria-label="Score by coaching round"></svg></div>
+    <div class="panel tablewrap" style="margin-top:24px"><table id="it-table"></table></div>
+  </section>
+
+  <p class="keys">Present with <kbd>←</kbd> <kbd>→</kbd> to change step, <kbd>Space</kbd> to replay the selected call.</p>
+</main>
+
+<script>
+const DATA = /*DATA*/null;
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pct = v => v == null ? "–" : Math.round(v * 100) + "%";
+const fx = v => v == null ? "–" : v.toFixed(2);
+const m = DATA.meta, ev = DATA.eval, opt = DATA.opt;
+
+const STEPS = [["s-agent", "The agent"], ["s-calls", "Calls"], ["s-score", "Scorecard"]].concat(opt ? [["s-coach", "Coaching"]] : []);
+let step = 0;
+$("#steps").innerHTML = STEPS.map(([id, label], i) => `<button data-i="${i}">${i + 1} · ${label}</button>`).join("");
+$("#steps").onclick = e => { const b = e.target.closest("button"); if (b) go(+b.dataset.i); };
+function go(i) {
+  step = Math.max(0, Math.min(STEPS.length - 1, i));
+  STEPS.forEach(([id], j) => { $("#" + id).hidden = j !== step; });
+  document.querySelectorAll("#steps button").forEach((b, j) => b.setAttribute("aria-current", j === step));
+  try { history.replaceState(null, "", "#" + STEPS[step][0].slice(2)); } catch {}
+  window.scrollTo({ top: 0 });
+}
+document.addEventListener("keydown", e => {
+  if (e.target.closest("input,textarea")) return;
+  if (e.key === "ArrowRight") go(step + 1);
+  else if (e.key === "ArrowLeft") go(step - 1);
+  else if (e.key === " " && STEPS[step][0] === "s-calls") { e.preventDefault(); replay(); }
+});
+
+// Step 1
+$("#where").textContent = `${m.project} · ${m.location} · ${m.app}`;
+$("#agent-lede").textContent = m.agentNote;
+$("#instr").textContent = DATA.instruction;
+$("#tools").innerHTML = DATA.tools.map(t => `<div class="tool"><b>${esc(t.name)}</b><span>${esc(t.desc)}</span></div>`).join("");
+$("#runfacts").innerHTML = [["Recorded", m.recorded], ["Mode", m.mode], ["Test calls", `${ev.episodes.length} (${ev.episodes.filter(e => e.split === "holdout").length} held back as exam)`],
+  ["Agent model", m.model], ["Caller, scorer, coach", "Gemini 2.5 Flash on Vertex AI"], ["Run ID", m.runId]]
+  .map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("");
+
+// Step 2
+const eps = ev.episodes;
+function status(e) { return e.error ? ["err", "quota error"] : e.scores.task_success ? ["pass", "pass"] : ["fail", "fail"]; }
+$("#calls").innerHTML = eps.map((e, i) => { const [c, l] = status(e);
+  return `<button class="call" role="listitem" data-i="${i}" aria-pressed="false"><span class="id">${esc(e.scenario_id.replaceAll("_", " "))}</span><span class="pill ${c}">${l}</span>
+  <span class="sub">${e.split === "holdout" ? "Exam call · " : ""}${e.error ? "Did not finish" : "Score " + fx(e.reward) + " · " + e.transcript.filter(t => t.role === "user").length + " caller turns"}</span></button>`; }).join("");
+let cur = Math.max(0, eps.findIndex(e => !e.error && e.scores.task_success)), timer = null;
+$("#calls").onclick = e => { const b = e.target.closest(".call"); if (b) { select(+b.dataset.i); replay(); } };
+function turnHTML(t, i) {
+  const tools = (t.tool_calls || []).map((c, k) => {
+    const r = (t.tool_responses || [])[k]; const res = r && r.response ? (r.response.result ?? r.response) : null;
+    return `<div class="toolcall"><b>${esc(c.action)}</b>(${esc(Object.entries(c.args || {}).map(([a, v]) => `${a}=${JSON.stringify(v)}`).join(", "))})${res ? `<br>→ ${esc(JSON.stringify(res)).slice(0, 360)}` : ""}</div>`; }).join("");
+  const flags = (t.voice_issues || []).map(f => `<span class="flag">${esc(f.replaceAll("_", " "))}</span>`).join("");
+  const meta = t.role === "agent" ? `Agent${t.latency_s != null ? " · replied in " + t.latency_s.toFixed(1) + "s" : ""}` : "Caller";
+  return `<div class="turn ${t.role}"><small>${meta}</small><p>${esc(t.text)}</p>${tools}${flags ? `<div class="flags">${flags}</div>` : ""}</div>`;
+}
+function verdictHTML(e) {
+  if (e.error) return `<h3>Did not finish</h3><p>${esc(e.error)}</p><p class="note">The project’s agent-model quota ran out mid-call. Calls like this are left out of the scores.</p>`;
+  const s = e.scores;
+  return `<h3>Scorer’s verdict · ${s.task_success ? "pass" : "fail"} · score ${fx(e.reward)}</h3><p style="margin:0">${esc(s.summary)}</p>
+    <div class="scores"><span>Rules <b>${pct(s.policy_adherence)}</b></span><span>Facts <b>${pct(s.groundedness)}</b></span><span>Tone <b>${pct(s.tone)}</b></span><span>Phone quality <b>${pct(s.voice)}</b></span></div>
+    ${s.failures.length ? `<div class="tablewrap"><table><tr><th>Turn</th><th>Problem</th></tr>${s.failures.map(f => `<tr><td class="num">${esc(f.turn)}</td><td>${esc(f.detail)}</td></tr>`).join("")}</table></div>` : ""}`;
+}
+function select(i) {
+  cur = i; clearInterval(timer);
+  document.querySelectorAll(".call").forEach((b, j) => b.setAttribute("aria-pressed", j === i));
+  const e = eps[i];
+  $("#t-title").textContent = e.scenario_id.replaceAll("_", " ");
+  $("#t-goal").textContent = e.goal ? "Caller’s goal: " + e.goal : "";
+  $("#transcript").innerHTML = ""; $("#verdict").hidden = true;
+}
+function finish(e) { const v = $("#verdict"); v.className = "panel verdict " + (e.error ? "" : e.scores.task_success ? "pass" : "fail"); v.innerHTML = verdictHTML(e); v.hidden = false; }
+function replay() {
+  const e = eps[cur]; select(cur); let k = 0;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduce) { showAll(); return; }
+  const tick = () => { if (k < e.transcript.length) { $("#transcript").insertAdjacentHTML("beforeend", turnHTML(e.transcript[k], k)); k++; } else { clearInterval(timer); finish(e); } };
+  tick(); timer = setInterval(tick, 1400);
+}
+function showAll() { const e = eps[cur]; clearInterval(timer); $("#transcript").innerHTML = e.transcript.map(turnHTML).join(""); finish(e); }
+$("#play").onclick = replay; $("#showall").onclick = showAll;
+select(cur); showAll();
+
+// Step 3
+const ok = eps.filter(e => !e.error);
+$("#score-h").textContent = `${ok.filter(e => e.scores.task_success).length} of ${ok.length} finished calls passed`;
+const k = [[fx(ev.train_reward), "Practice-call score"], [fx(ev.holdout_reward), "Exam-call score"], [pct(ev.pass_rate), "Caller got what they needed"],
+  [pct(ev.metrics.policy_adherence), "House rules followed"], [pct(ev.metrics.groundedness), "Stuck to real facts"], [pct(ev.metrics.voice), "Bot turns with no phone problem"],
+  [ev.latency.p50 != null ? ev.latency.p50.toFixed(1) + "s" : "–", "Typical reply time"]];
+$("#kpis").innerHTML = k.map(([v, l]) => `<div class="kpi"><b>${v}</b><span>${l}</span></div>`).join("");
+$("#ep-table").innerHTML = `<tr><th>Call</th><th>Type</th><th>Result</th><th>Score</th><th>Scorer’s reason</th></tr>` + eps.map(e => { const [c, l] = status(e);
+  return `<tr><td>${esc(e.scenario_id.replaceAll("_", " "))}</td><td>${e.split === "holdout" ? "exam" : "practice"}</td><td><span class="pill ${c}">${l}</span></td><td class="num">${e.error ? "–" : fx(e.reward)}</td><td>${esc(e.error ? "Quota ran out mid-call; excluded from scores" : e.scores.summary)}</td></tr>`; }).join("");
+const issues = Object.entries(ev.voice_issues || {}).sort((a, b) => b[1] - a[1]).map(([kk, v]) => `${kk.replaceAll("_", " ")} × ${v}`).join(", ");
+$("#score-note").textContent = (issues ? "Phone-quality problems found: " + issues + ". " : "") + (ev.errors ? `${ev.errors} call(s) hit the project’s default agent-model quota and are excluded.` : "");
+
+// Step 4
+if (opt) {
+  const its = opt.iterations, pts = its.filter(i => i.result && !i.result.errors);
+  const kept = its.filter(i => i.accepted && i.iteration).pop();
+  const base = its[0].result;
+  $("#coach-h").textContent = kept ? `Score ${fx(base.train_reward)} → ${fx(kept.result.train_reward)} after ${its.length - 1} coaching round${its.length > 2 ? "s" : ""}` : `No change beat the original in ${its.length - 1} round${its.length > 2 ? "s" : ""}`;
+  const W = 1000, H = 320, L = 60, R = 30, T = 24, B = 48, n = Math.max(1, its.length - 1);
+  const x = i => L + (W - L - R) * i / n, y = v => T + (H - T - B) * (1 - v);
+  const css = getComputedStyle(document.documentElement), col = v => css.getPropertyValue(v).trim();
+  let svg = "";
+  for (const g of [0, .25, .5, .75, 1]) svg += `<line x1="${L}" x2="${W - R}" y1="${y(g)}" y2="${y(g)}" stroke="${col("--line")}"/><text x="${L - 12}" y="${y(g) + 5}" text-anchor="end" font-size="14" fill="${col("--muted")}">${g.toFixed(2)}</text>`;
+  for (const [key, c, dash] of [["holdout_reward", col("--muted"), "6 6"], ["train_reward", col("--accent"), ""]]) {
+    const p = pts.filter(i => i.result[key] != null).map(i => `${x(i.iteration)},${y(i.result[key])}`);
+    if (p.length > 1) svg += `<polyline points="${p.join(" ")}" fill="none" stroke="${c}" stroke-width="3" stroke-dasharray="${dash}"/>`;
+  }
+  for (const i of its) {
+    svg += `<text x="${x(i.iteration)}" y="${H - 16}" text-anchor="middle" font-size="14" fill="${col("--muted")}">${i.iteration ? "Round " + i.iteration : "Start"}</text>`;
+    if (i.result && !i.result.errors && i.result.train_reward != null) svg += i.accepted ? `<circle cx="${x(i.iteration)}" cy="${y(i.result.train_reward)}" r="7" fill="${col("--accent")}"/>`
+      : `<path d="M${x(i.iteration) - 7},${y(i.result.train_reward) - 7}l14,14m0,-14l-14,14" stroke="${col("--bad")}" stroke-width="3" fill="none"/>`;
+  }
+  $("#chart").innerHTML = svg;
+  $("#it-table").innerHTML = `<tr><th>Round</th><th>Outcome</th><th>Practice</th><th>Exam</th><th>What the coach changed</th></tr>` + its.map(i => {
+    const out = !i.iteration ? ["hold", "start"] : i.invalid ? ["err", i.invalid.startsWith("inconclusive") ? "inconclusive" : "blocked"] : i.accepted ? ["pass", "kept"] : ["fail", "rejected"];
+    const r = i.result || {};
+    return `<tr><td class="num">${i.iteration || "–"}</td><td><span class="pill ${out[0]}">${out[1]}</span></td><td class="num">${fx(r.train_reward)}</td><td class="num">${fx(r.holdout_reward)}</td>
+      <td>${esc(i.iteration ? (i.invalid ? i.invalid + ". " : "") + (i.changes || []).join("; ") : "The agent as created")}</td></tr>`; }).join("");
+}
+
+const fromHash = () => go(Math.max(0, STEPS.findIndex(([id]) => id.slice(2) === location.hash.slice(1))));
+addEventListener("hashchange", fromHash);
+fromHash();
+</script>

@@ -1,0 +1,18 @@
+<section id="demo" data-transition="fade" style="background:#F6F5F0;color:#17202B;font-family:'Public Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:40px">
+<div style="display:flex;flex-direction:column;gap:20px">
+<p style="font-size:24px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#B34A14">Live demo</p>
+<h2 style="font-family:'Fraunces', Georgia, serif;font-size:72px;font-weight:600;line-height:1.1">One coaching run, start to finish</h2>
+</div>
+<div style="display:flex;gap:40px;align-items:start">
+<div style="display:flex;flex-direction:column;gap:16px;width:835px">
+<img src="/_blob/69554d628b0d85fe2194d1dde846eb01" alt="Auto-improve screen: score chart rising from 0.64 to 0.93, with rounds marked kept, rejected and invalid" style="width:835px;height:526px;object-fit:contain;background:#FFFFFF;border:1px solid #D9DEE4;border-radius:12px">
+<p style="font-size:24px;line-height:1.4;color:#4A5563">Score climbs from <b>0.64 to 0.93</b>. Round 2 is rejected because exam calls dropped. Round 3 is blocked for removing the order tool.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:16px;width:789px">
+<img src="/_blob/991b47e151a24d773b032021f3c20dae" alt="A scored call: caller and agent turns with audio players, what the agent heard, phone-quality flags and the judge’s findings" style="width:789px;height:526px;object-fit:contain;background:#FFFFFF;border:1px solid #D9DEE4;border-radius:12px">
+<p style="font-size:24px;line-height:1.4;color:#4A5563">Every call can be replayed: what the caller said, what the bot <b>heard</b>, the phone-quality flags, and the scorer’s reasons.</p>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#6A7480">Screens from the working app, using demo data: a scripted stand-in agent run through the real scoring and coaching code. Not a live customer agent.</p>
+<aside>If the room allows, switch to the app here; otherwise talk through the two screens. Left: the Auto-improve screen. Round 0 is the bot as it is today, scoring 0.64. In round 1 the coach shortened replies, asked one question at a time and added identity checks; the score jumped to 0.93 on both practice and exam calls, so it was kept. Round 2 tried skipping identity checks: practice calls looked the same but exam calls fell to 0.57, so it was thrown away. Round 3 tried to stop using the order lookup tool and was blocked before testing. Right: one call opened up. You can play each turn, see that the bot heard “51 817” when the caller said 51807, see flags like two questions in one turn, and read why the scorer marked it down. Be clear that these screens use demo data from a scripted stand-in agent; the first run on a real agent is part of the pilot. Live demo click path: Connect, pick agent, Scenarios, Auto-improve, Full audio, tick sandbox, Start loop, then Diff and Episodes on the kept round.</aside>
+</section>

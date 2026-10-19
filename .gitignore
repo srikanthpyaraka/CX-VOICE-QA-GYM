@@ -1,0 +1,6 @@
+runs/*.json
+runs/audio/
+__pycache__/
+.pytest_cache/
+.DS_Store
+static/_preview*.html

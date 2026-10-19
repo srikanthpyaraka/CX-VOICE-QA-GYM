@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voice QA Gym</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsdiff/5.1.0/diff.min.js"></script>
+<style>
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --ink: #1b1f24; --muted: #5f6b7a; --line: #dde2e8;
+  --accent: #1a73e8; --good: #188038; --bad: #c5221f; --warn: #b06000; --code: #f1f3f4;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #111418; --panel: #1a1e24; --ink: #e6e9ee; --muted: #9aa5b1; --line: #2c333c;
+          --accent: #8ab4f8; --good: #81c995; --bad: #f28b82; --warn: #fdd663; --code: #22272e; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--ink); }
+header { display: flex; align-items: center; gap: 16px; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--panel); flex-wrap: wrap; }
+header h1 { font-size: 16px; margin: 0; }
+#conn-badge { font-size: 12px; color: var(--muted); }
+nav { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
+nav button { background: none; border: 0; padding: 6px 12px; border-radius: 6px; color: var(--muted); cursor: pointer; font: inherit; }
+nav button.on { background: var(--code); color: var(--ink); font-weight: 600; }
+main { max-width: 1200px; margin: 0 auto; padding: 20px 16px 60px; }
+section { display: none; } section.on { display: block; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 16px; overflow-x: auto; }
+.card h2 { font-size: 14px; margin: 0 0 12px; }
+.row { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
+label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+label.inline { flex-direction: row; align-items: center; gap: 6px; color: var(--ink); font-size: 13px; }
+input[type=text], input[type=number], select, textarea { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; }
+input[type=number] { width: 80px; }
+textarea { width: 100%; min-height: 460px; font: 12.5px/1.45 ui-monospace, Menlo, monospace; }
+button.primary, button.sec { font: inherit; border-radius: 6px; padding: 7px 14px; cursor: pointer; border: 1px solid var(--accent); }
+button.primary { background: var(--accent); color: var(--panel); }
+button.sec { background: none; color: var(--accent); }
+button:disabled { opacity: .5; cursor: default; }
+pre { background: var(--code); border-radius: 6px; padding: 10px; overflow: auto; max-height: 360px; font: 12px/1.45 ui-monospace, Menlo, monospace; white-space: pre-wrap; margin: 0; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+.kpi { border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+.kpi b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
+.kpi span { font-size: 12px; color: var(--muted); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 500; font-size: 12px; }
+tr.click { cursor: pointer; } tr.click:hover { background: var(--code); }
+.num { font-variant-numeric: tabular-nums; }
+.tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 10px; border: 1px solid currentColor; margin: 1px 3px 1px 0; }
+.good { color: var(--good); } .bad { color: var(--bad); } .warn { color: var(--warn); } .muted { color: var(--muted); }
+.msg { font-size: 13px; color: var(--muted); margin-top: 8px; }
+.err { color: var(--bad); font-size: 13px; margin-top: 8px; white-space: pre-wrap; }
+.progress { height: 6px; background: var(--code); border-radius: 3px; overflow: hidden; margin-top: 10px; }
+.progress div { height: 100%; background: var(--accent); width: 0; transition: width .3s; }
+.turn { padding: 8px 10px; border-radius: 8px; margin: 6px 0; max-width: 85%; }
+.turn.user { background: var(--code); }
+.turn.agent { border: 1px solid var(--line); margin-left: auto; }
+.turn small { display: block; color: var(--muted); font-size: 11px; }
+.diff ins { background: color-mix(in srgb, var(--good) 22%, transparent); text-decoration: none; }
+.diff del { background: color-mix(in srgb, var(--bad) 22%, transparent); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 800px) { .grid2 { grid-template-columns: 1fr; } .turn { max-width: 100%; } }
+dialog { width: min(900px, 94vw); max-height: 88vh; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--ink); padding: 0; }
+dialog .head { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); }
+dialog .body { padding: 16px; }
+.chart-box { position: relative; height: 240px; }
+.turn audio { display: block; width: 100%; height: 32px; margin-top: 6px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Voice QA Gym</h1>
+  <span id="conn-badge">Not connected</span>
+  <nav>
+    <button data-tab="connect" class="on">Connect</button>
+    <button data-tab="suite">Scenarios</button>
+    <button data-tab="eval">Evaluate</button>
+    <button data-tab="opt">Auto-improve</button>
+    <button data-tab="history">History</button>
+  </nav>
+</header>
+
+<main>
+<section id="connect" class="on">
+  <div class="card">
+    <h2>CX Agent Studio app</h2>
+    <div class="row">
+      <label>GCP project<input type="text" id="project" placeholder="my-project"></label>
+      <label>Location<input type="text" id="location" value="global"></label>
+      <label>App ID<input type="text" id="app_id" placeholder="app uuid"></label>
+      <button class="primary" id="btn-connect">Connect</button>
+    </div>
+    <div class="msg">Uses Application Default Credentials (<code>gcloud auth application-default login</code>). Gemini runs on Vertex AI in the same project unless GOOGLE_API_KEY is set.</div>
+    <div class="err" id="connect-err"></div>
+  </div>
+  <div class="card" id="agent-card" hidden>
+    <h2>Agent under test</h2>
+    <div class="row"><label>Agent<select id="agent"></select></label></div>
+    <p class="muted" style="font-size:12px">Current instruction (the policy being optimised):</p>
+    <pre id="instruction"></pre>
+  </div>
+</section>
+
+<section id="suite">
+  <div class="card">
+    <h2>Test suite (YAML)</h2>
+    <textarea id="suite-yaml" spellcheck="false"></textarea>
+    <div class="row" style="margin-top:10px"><button class="primary" id="btn-save-suite">Save</button><span class="msg" id="suite-msg"></span></div>
+    <div class="err" id="suite-err"></div>
+  </div>
+</section>
+
+<section id="eval">
+  <div class="card">
+    <h2>Evaluate current instruction</h2>
+    <div class="row">
+      <label>Trials per scenario<input type="number" id="eval-trials" value="1" min="1" max="5"></label>
+      <label>Mode<select id="eval-mode" onchange="modeChanged('eval')"><option value="text">Text turns</option><option value="audio">Full audio (TTS → BidiRunSession)</option></select></label>
+      <label id="eval-noise-wrap" hidden>Background noise<select id="eval-noise" class="noise-select"><option value="">Per-scenario only</option></select></label>
+      <label class="inline"><input type="checkbox" id="eval-fakes" checked> Use tool fakes</label>
+      <button class="primary" id="btn-eval">Run evaluation</button>
+    </div>
+    <div class="msg" id="eval-audio-note" hidden>Audio runs in real time: caller speech is synthesised and streamed, and the agent's reply is played out before the next turn. Expect 1–3 minutes per episode.</div>
+    <div class="progress"><div id="eval-bar"></div></div>
+    <div class="msg" id="eval-msg"></div><div class="err" id="eval-err"></div>
+  </div>
+  <div id="eval-result"></div>
+</section>
+
+<section id="opt">
+  <div class="card">
+    <h2>Auto-improve loop</h2>
+    <div class="row">
+      <label>Iterations<input type="number" id="opt-iters" value="3" min="1" max="10"></label>
+      <label>Trials per scenario<input type="number" id="opt-trials" value="1" min="1" max="5"></label>
+      <label>Mode<select id="opt-mode" onchange="modeChanged('opt')"><option value="text">Text turns</option><option value="audio">Full audio (TTS → BidiRunSession)</option></select></label>
+      <label id="opt-noise-wrap" hidden>Background noise<select id="opt-noise" class="noise-select"><option value="">Per-scenario only</option></select></label>
+      <label class="inline"><input type="checkbox" id="opt-fakes" checked> Use tool fakes</label>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label class="inline"><input type="checkbox" id="opt-sandbox"> This is a dev/sandbox app. Candidate instructions are written to the live agent during the run, and the original is restored at the end.</label>
+    </div>
+    <div class="row" style="margin-top:10px"><button class="primary" id="btn-opt">Start loop</button></div>
+    <div class="msg" id="opt-audio-note" hidden>Audio runs in real time, about 1–3 minutes per episode for every iteration. Start with 1–2 iterations.</div>
+    <div class="progress"><div id="opt-bar"></div></div>
+    <div class="msg" id="opt-msg"></div><div class="err" id="opt-err"></div>
+  </div>
+  <div id="opt-result"></div>
+</section>
+
+<section id="history">
+  <div class="card"><h2>Runs</h2><table id="runs"><thead><tr><th>Run</th><th>Type</th><th>Mode</th><th>Agent</th><th>Status</th></tr></thead><tbody></tbody></table></div>
+</section>
+</main>
+
+<dialog id="dlg"><div class="head"><b id="dlg-title"></b><button class="sec" onclick="dlg.close()">Close</button></div><div class="body" id="dlg-body"></div></dialog>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pct = v => v == null ? "–" : (v * 100).toFixed(0) + "%";
+const fx = v => v == null ? "–" : v.toFixed(3);
+let conn = null, chart = null;
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, { headers: { "Content-Type": "application/json" }, ...opts,
+    body: opts.body ? JSON.stringify(opts.body) : undefined });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.detail || r.statusText);
+  return j;
+}
+
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => showTab(b.dataset.tab));
+function showTab(t) {
+  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.tab === t));
+  document.querySelectorAll("section").forEach(s => s.classList.toggle("on", s.id === t));
+  if (t === "history") loadRuns();
+}
+
+// ----- connect -----
+try { const c = JSON.parse(localStorage.getItem("conn") || "{}");
+  for (const k of ["project", "location", "app_id"]) if (c[k]) $("#" + k).value = c[k]; } catch {}
+
+$("#btn-connect").onclick = async () => {
+  $("#connect-err").textContent = ""; $("#btn-connect").disabled = true;
+  const body = { project: $("#project").value.trim(), location: $("#location").value.trim(), app_id: $("#app_id").value.trim() };
+  try {
+    const r = await api("/api/connect", { method: "POST", body });
+    try { localStorage.setItem("conn", JSON.stringify(body)); } catch {}
+    conn = body;
+    $("#conn-badge").textContent = r.app_name;
+    $("#agent").innerHTML = r.agents.map(a => `<option value="${esc(a.name)}">${esc(a.display_name)}</option>`).join("");
+    $("#agent-card").hidden = false;
+    loadInstruction();
+  } catch (e) { $("#connect-err").textContent = e.message; }
+  $("#btn-connect").disabled = false;
+};
+$("#agent").onchange = loadInstruction;
+async function loadInstruction() {
+  $("#instruction").textContent = "Loading…";
+  try { $("#instruction").textContent = (await api("/api/agent?name=" + encodeURIComponent($("#agent").value))).instruction || "(empty)"; }
+  catch (e) { $("#instruction").textContent = e.message; }
+}
+
+// ----- suite -----
+api("/api/suite").then(r => $("#suite-yaml").value = r.yaml);
+$("#btn-save-suite").onclick = async () => {
+  $("#suite-err").textContent = ""; $("#suite-msg").textContent = "";
+  try { const r = await api("/api/suite", { method: "PUT", body: { yaml: $("#suite-yaml").value } });
+        $("#suite-msg").textContent = `Saved, ${r.scenarios} scenarios`; }
+  catch (e) { $("#suite-err").textContent = e.message; }
+};
+
+// ----- mode -----
+function modeChanged(v) {
+  const audio = $(`#${v}-mode`).value === "audio";
+  $(`#${v}-noise-wrap`).hidden = !audio; $(`#${v}-audio-note`).hidden = !audio;
+}
+api("/api/noise").then(files => document.querySelectorAll(".noise-select").forEach(sel =>
+  sel.insertAdjacentHTML("beforeend", files.map(f => `<option value="${esc(f)}">${esc(f)} (all scenarios)</option>`).join(""))));
+const modeParams = v => ({ modality: $(`#${v}-mode`).value, background_noise: $(`#${v}-noise`).value || null });
+
+// ----- runs -----
+function agentOrErr(errEl) {
+  if (!conn) { $(errEl).textContent = "Connect to an app first."; return null; }
+  return $("#agent").value;
+}
+
+$("#btn-eval").onclick = async () => {
+  $("#eval-err").textContent = ""; const agent = agentOrErr("#eval-err"); if (!agent) return;
+  try {
+    const r = await api("/api/runs/eval", { method: "POST", body: { agent_name: agent,
+      trials: +$("#eval-trials").value, use_tool_fakes: $("#eval-fakes").checked, ...modeParams("eval") } });
+    poll(r.id, "eval");
+  } catch (e) { $("#eval-err").textContent = e.message; }
+};
+
+$("#btn-opt").onclick = async () => {
+  $("#opt-err").textContent = ""; const agent = agentOrErr("#opt-err"); if (!agent) return;
+  try {
+    const r = await api("/api/runs/optimize", { method: "POST", body: { agent_name: agent,
+      iterations: +$("#opt-iters").value, trials: +$("#opt-trials").value,
+      use_tool_fakes: $("#opt-fakes").checked, confirm_sandbox: $("#opt-sandbox").checked, ...modeParams("opt") } });
+    poll(r.id, "opt");
+  } catch (e) { $("#opt-err").textContent = e.message; }
+};
+
+async function poll(id, view) {
+  const btn = view === "eval" ? $("#btn-eval") : $("#btn-opt");
+  btn.disabled = true;
+  while (true) {
+    let run;
+    try { run = await api("/api/runs/" + id); } catch (e) { $(`#${view}-err`).textContent = e.message; break; }
+    showRun(run);
+    if (run.status !== "running") break;
+    await new Promise(r => setTimeout(r, 1500));
+  }
+  btn.disabled = false;
+}
+
+function showRun(run) {
+  const view = run.kind === "eval" ? "eval" : "opt";
+  showTab(view);
+  const total = run.episodes_total || 1;
+  $(`#${view}-bar`).style.width = run.status === "running" ? (100 * run.episodes_done / total) + "%" : "100%";
+  const last = run.messages[run.messages.length - 1] || "";
+  $(`#${view}-msg`).textContent = `Run ${run.id} · ${run.status}` +
+    (run.status === "running" ? ` · ${run.episodes_done}/${run.episodes_total} episodes · ${last}` : "");
+  $(`#${view}-err`).textContent = run.messages.filter(m => m.startsWith("ERROR")).join("\n");
+  if (run.kind === "eval") $("#eval-result").innerHTML = run.result ? resultHTML(run.result, "e", run.id) : "";
+  else renderOpt(run);
+}
+
+// ----- shared result rendering -----
+const EP = {};  // episode lookup for the transcript dialog
+function resultHTML(res, key, runId) {
+  const issues = Object.entries(res.voice_issues).sort((a, b) => b[1] - a[1]);
+  const rows = res.episodes.map((e, i) => { EP[key + i] = { ...e, runId }; const s = e.scores;
+    return `<tr class="click" onclick="openEp('${key + i}')">
+      <td>${esc(e.scenario_id)}</td><td class="muted">${e.split}</td>
+      <td class="num">${fx(e.reward)}</td>
+      <td>${e.error ? `<span class="tag bad">error</span>` : s.task_success ? `<span class="tag good">pass</span>` : `<span class="tag bad">fail</span>`}</td>
+      <td class="muted">${esc(e.error ? e.error.slice(0, 80) : s.summary)}</td></tr>`; }).join("");
+  return `<div class="card"><div class="kpis">
+      <div class="kpi"><b>${fx(res.train_reward)}</b><span>Train reward</span></div>
+      <div class="kpi"><b>${fx(res.holdout_reward)}</b><span>Holdout reward</span></div>
+      <div class="kpi"><b>${pct(res.pass_rate)}</b><span>Task success</span></div>
+      <div class="kpi"><b>${pct(res.metrics.policy_adherence)}</b><span>Policy adherence</span></div>
+      <div class="kpi"><b>${pct(res.metrics.groundedness)}</b><span>Groundedness</span></div>
+      <div class="kpi"><b>${pct(res.metrics.voice)}</b><span>Voice-clean turns</span></div>
+      <div class="kpi"><b>${res.latency.p50 ?? "–"}s / ${res.latency.p95 ?? "–"}s</b><span>${res.asr ? "Response gap" : "Latency"} p50 / p95</span></div>
+      ${res.asr ? `<div class="kpi"><b>${pct(res.asr.mean_wer)}</b><span>ASR word error (${res.asr.misheard_turns}/${res.asr.turns} turns misheard)</span></div>` : ""}
+    </div>
+    ${issues.length ? `<p style="margin:12px 0 0">${issues.map(([k, v]) => `<span class="tag warn">${k} × ${v}</span>`).join("")}</p>` : ""}
+    ${res.errors ? `<p class="bad">${res.errors} episode(s) errored</p>` : ""}
+    </div>
+    <div class="card"><h2>Episodes</h2><table><thead><tr><th>Scenario</th><th>Split</th><th>Reward</th><th>Result</th><th>Judge</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+const dlg = $("#dlg");
+function openEp(k) {
+  const e = EP[k];
+  $("#dlg-title").textContent = `${e.scenario_id} · reward ${fx(e.reward)} · ${e.end_reason || ""}`;
+  const turns = e.transcript.map((t, i) => `<div class="turn ${t.role}"><small>#${i} ${t.role}${t.latency_s != null ? ` · ${t.latency_s}s${t.audio_s != null ? " gap" : ""}` : ""}${t.audio_s != null ? ` · ${t.audio_s}s speech` : ""}</small>${esc(t.text)}
+     ${t.heard != null && t.wer ? `<small>agent heard: “${esc(t.heard)}” <span class="tag ${t.wer > 0.2 ? "bad" : "warn"}">WER ${pct(t.wer)}</span></small>` : ""}
+     ${t.role === "user" && "heard" in t && t.heard == null ? `<small class="warn">no ASR transcript returned</small>` : ""}
+     ${t.audio ? `<audio controls preload="none" src="/audio/${e.runId}/${t.audio}"></audio>` : ""}
+     ${(t.tool_calls || []).map(c => `<small>tool → ${esc(c.action)} ${esc(JSON.stringify(c.args))}</small>`).join("")}
+     ${t.transfer ? `<small>transfer → ${esc(t.transfer)}</small>` : ""}
+     ${(t.voice_issues || []).map(v => `<span class="tag warn">${v}</span>`).join("")}</div>`).join("");
+  const s = e.scores;
+  const judge = e.error ? `<p class="bad">${esc(e.error)}</p>` : `<p>${esc(s.summary)}</p>
+    <p class="muted">policy ${pct(s.policy_adherence)} · grounded ${pct(s.groundedness)} · tone ${pct(s.tone)} · voice ${pct(s.voice)}</p>
+    ${s.failures.length ? `<table><tr><th>Turn</th><th>Category</th><th>Detail</th></tr>${s.failures.map(f => `<tr><td>${f.turn}</td><td>${esc(f.category)}</td><td>${esc(f.detail)}</td></tr>`).join("")}</table>` : ""}`;
+  $("#dlg-body").innerHTML = `<div class="grid2"><div>${turns}</div><div><h2 style="font-size:14px">Judge</h2>${judge}</div></div>`;
+  dlg.showModal();
+}
+
+// ----- optimisation view -----
+let lastRun = null;
+function renderOpt(run) {
+  lastRun = run;
+  const its = run.iterations;
+  const done = run.status !== "running";
+  const best = its.filter(i => i.accepted).pop();
+  const rows = its.map(it => {
+    const r = it.result;
+    const state = it.invalid ? `<span class="tag warn">${it.invalid.startsWith("inconclusive") ? "inconclusive" : "invalid"}</span>` : it.accepted ? `<span class="tag good">${it.iteration ? "kept" : "baseline"}</span>` : `<span class="tag bad">rejected</span>`;
+    return `<tr><td class="num">${it.iteration}</td><td>${state}</td>
+      <td class="num">${r ? fx(r.train_reward) : "–"}</td><td class="num">${r ? fx(r.holdout_reward) : "–"}</td><td class="num">${r ? pct(r.pass_rate) : "–"}</td>
+      <td style="max-width:420px">${esc(it.invalid || it.diagnosis)}${it.changes.length ? `<ul style="margin:4px 0 0;padding-left:18px">${it.changes.map(c => `<li>${esc(c)}</li>`).join("")}</ul>` : ""}</td>
+      <td style="white-space:nowrap">
+        ${it.iteration ? `<button class="sec" onclick="showDiff(${it.iteration})">Diff</button>` : ""}
+        ${r ? `<button class="sec" onclick="showIter(${it.iteration})">Episodes</button>` : ""}
+        ${done && r && it.iteration ? `<button class="sec" onclick="applyIter(${it.iteration})">Apply</button>` : ""}
+      </td></tr>`;
+  }).join("");
+  $("#opt-result").innerHTML = `
+    <div class="card"><h2>Reward by iteration</h2><div class="chart-box"><canvas id="opt-chart"></canvas></div></div>
+    <div class="card"><h2>Iterations ${best && best.iteration ? `· best is #${best.iteration}` : ""}</h2>
+      <table><thead><tr><th>#</th><th>Outcome</th><th>Train</th><th>Holdout</th><th>Pass</th><th>Diagnosis / changes</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+      ${done && run.original_instruction ? `<div class="row" style="margin-top:12px"><button class="sec" onclick="applyIter(null)">Restore original instruction</button>
+      <span class="msg">${run.applied_iteration !== undefined ? `Applied: ${run.applied_iteration === null ? "original" : "#" + run.applied_iteration}` : "Nothing applied yet. The agent has its original instruction."}</span></div>` : ""}
+    </div><div id="opt-detail"></div>`;
+  drawChart(its);
+}
+
+function drawChart(its) {
+  const pts = its.filter(i => i.result);
+  if (chart) chart.destroy();
+  const css = getComputedStyle(document.documentElement);
+  const c = n => css.getPropertyValue(n).trim();
+  chart = new Chart($("#opt-chart"), {
+    type: "line",
+    data: { labels: pts.map(i => "#" + i.iteration), datasets: [
+      { label: "Train", data: pts.map(i => i.result.train_reward), borderColor: c("--accent"), backgroundColor: c("--accent"),
+        pointStyle: pts.map(i => i.accepted ? "circle" : "crossRot"), pointRadius: 6 },
+      { label: "Holdout", data: pts.map(i => i.result.holdout_reward), borderColor: c("--muted"), backgroundColor: c("--muted"), borderDash: [5, 4] } ] },
+    options: { maintainAspectRatio: false, animation: false,
+      scales: { y: { min: 0, max: 1, grid: { color: c("--line") }, ticks: { color: c("--muted") } },
+                x: { grid: { display: false }, ticks: { color: c("--muted") } } },
+      plugins: { legend: { labels: { color: c("--ink") } },
+        tooltip: { callbacks: { afterLabel: ctx => pts[ctx.dataIndex].accepted ? "kept" : "rejected" } } } }
+  });
+}
+
+function showIter(n) {
+  const it = lastRun.iterations.find(i => i.iteration === n);
+  $("#opt-detail").innerHTML = `<h2 style="font-size:14px">Iteration #${n}</h2>` + resultHTML(it.result, "o" + n + "_", lastRun.id);
+  $("#opt-detail").scrollIntoView({ behavior: "smooth" });
+}
+
+function showDiff(n) {
+  const it = lastRun.iterations.find(i => i.iteration === n);
+  const html = Diff.diffWords(lastRun.original_instruction || "", it.instruction || "")
+    .map(p => p.added ? `<ins>${esc(p.value)}</ins>` : p.removed ? `<del>${esc(p.value)}</del>` : esc(p.value)).join("");
+  $("#dlg-title").textContent = `Iteration #${n} vs original instruction`;
+  $("#dlg-body").innerHTML = `<pre class="diff" style="max-height:none">${html}</pre>`;
+  dlg.showModal();
+}
+
+async function applyIter(n) {
+  const what = n === null ? "restore the ORIGINAL instruction" : `write iteration #${n}'s instruction`;
+  if (!confirm(`This will ${what} to the live agent "${$("#agent").selectedOptions[0]?.text}". Continue?`)) return;
+  try { await api(`/api/runs/${lastRun.id}/apply`, { method: "POST", body: { iteration: n } });
+        showRun(await api("/api/runs/" + lastRun.id)); loadInstruction(); }
+  catch (e) { $("#opt-err").textContent = e.message; }
+}
+
+// ----- history -----
+async function loadRuns() {
+  const runs = await api("/api/runs");
+  $("#runs tbody").innerHTML = runs.map(r => `<tr class="click" onclick="openRun('${r.id}')"><td class="num">${r.id}</td><td>${r.kind}</td><td>${r.modality}</td>
+    <td class="muted">${esc((r.agent_name || "").split("/").pop())}</td><td>${r.status}</td></tr>`).join("") || `<tr><td colspan="5" class="muted">No runs yet</td></tr>`;
+}
+async function openRun(id) { const run = await api("/api/runs/" + id); run.status === "running" ? poll(id, run.kind === "eval" ? "eval" : "opt") : showRun(run); }
+</script>
+</body>
+</html>

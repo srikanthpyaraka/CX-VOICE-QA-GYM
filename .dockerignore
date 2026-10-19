@@ -1,0 +1,6 @@
+runs/
+tests/
+__pycache__/
+.pytest_cache/
+*.md
+docs/

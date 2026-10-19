@@ -1,0 +1,22 @@
+<section id="woptres" data-transition="fade" style="background:#E8EDF2;color:#17202B;font-family:'Public Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:40px">
+<div style="display:flex;flex-direction:column;gap:20px">
+<p style="font-size:24px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#B34A14">Tab 4 · Auto-improve results</p>
+<h2 style="font-family:'Fraunces', Georgia, serif;font-size:72px;font-weight:600;line-height:1.1">A chart of each round and a verdict on every change</h2>
+</div>
+<div style="display:flex;gap:48px;align-items:start">
+<img src="/_blob/9ebf3721bcb0e65ad388ad10e1daa500" alt="Auto-improve results: score chart by round, and a table of rounds marked baseline, kept, rejected and invalid with the coach’s reasons and Diff, Episodes and Apply buttons" style="width:835px;height:526px;object-fit:contain;background:#FFFFFF;border:1px solid #D9DEE4;border-radius:12px">
+<div style="flex:1;display:flex;flex-direction:column;gap:20px">
+<p style="font-size:26px;line-height:1.4;color:#26313D"><b>Chart:</b> solid blue is practice calls, dashed grey is exam calls. A dot means kept, a cross means rejected.</p>
+<table style="font-size:24px;color:#17202B;background:#FFFFFF;border-radius:12px">
+<tr><th style="width:30%">Outcome</th><th style="width:70%">Meaning</th></tr>
+<tr><td>baseline</td><td>The bot as it is today</td></tr>
+<tr><td>kept</td><td>Better on practice, no worse on exam</td></tr>
+<tr><td>rejected</td><td>No real gain, or exam calls got worse</td></tr>
+<tr><td>invalid</td><td>Removed a tool or structure; never tested</td></tr>
+</table>
+<p style="font-size:26px;line-height:1.4;color:#26313D"><b>Each row:</b> the coach’s diagnosis and changes, plus <b>Diff</b>, <b>Episodes</b> and <b>Apply</b>.</p>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#6A7480">Demo data shown: 0.64 → 0.93 in round 1; round 2 rejected when exam calls fell to 0.57.</p>
+<aside>This is the screen to spend time on. The chart shows the score per round: blue for practice calls, grey dashes for exam calls. In the demo, round 1 jumps from 0.64 to 0.93 on both, so it is kept. Round 2 looks the same on practice but exam calls fall, which is the classic sign of a change that only learned the practice calls, so it is rejected. Round 3 tried to stop using the order tool and was blocked without testing. Each row lists what the coach saw and what it changed. Diff compares instructions, Episodes opens that round’s calls, and Apply writes that version to the bot.</aside>
+</section>

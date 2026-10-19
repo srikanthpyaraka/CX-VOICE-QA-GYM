@@ -1,0 +1,19 @@
+{
+  "v": 4,
+  "createdOnFiles": {"v": 1, "at": "2026-10-19T10:00:00Z"},
+  "lists": "css",
+  "title": "Voice QA Gym Walkthrough",
+  "order": ["wcover", "wmap", "wconnect", "wsuite", "wevalctl", "wevalres", "wcall", "woptctl", "woptres", "wdiff", "whistory", "wsession"],
+  "sections": {
+    "s1": {"description": "What the app is and how its five tabs fit together", "start": "wcover"},
+    "s2": {"description": "Setting up: connecting to the agent and writing test calls", "start": "wconnect"},
+    "s3": {"description": "Testing the agent and reading the results", "start": "wevalctl"},
+    "s4": {"description": "Improving the agent and approving changes", "start": "woptctl"},
+    "s5": {"description": "Run history and a typical session", "start": "whistory"}
+  },
+  "faces": {
+    "fraunces": {"family": "Fraunces", "href": "https://fonts.googleapis.com/css2?family=Fraunces:wght@400..700&display=swap"},
+    "public-sans": {"family": "Public Sans", "href": "https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700&display=swap"}
+  },
+  "designSystems": []
+}

@@ -1,0 +1,25 @@
+<section id="wsuite" data-transition="fade" style="background:#E8EDF2;color:#17202B;font-family:'Public Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:40px">
+<div style="display:flex;flex-direction:column;gap:20px">
+<p style="font-size:24px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#B34A14">Tab 2 · Scenarios</p>
+<h2 style="font-family:'Fraunces', Georgia, serif;font-size:72px;font-weight:600;line-height:1.1">Write the test calls in plain English</h2>
+</div>
+<div style="display:flex;gap:48px;align-items:start">
+<div style="display:flex;flex-direction:column;gap:16px;width:820px">
+<img src="/_blob/acc852b64a4f88f129c85fcd17c2ec63" alt="Scenarios tab: a text editor holding the test suite with policies and scenarios" style="width:820px;height:410px;object-fit:contain;background:#FFFFFF;border:1px solid #D9DEE4;border-radius:12px">
+<p style="font-size:24px;line-height:1.4;color:#4A5563"><b>Save</b> checks the file first and explains any mistake, such as a missing goal or a repeated ID.</p>
+</div>
+<table style="font-size:24px;color:#17202B;background:#FFFFFF;border-radius:12px">
+<tr><th style="width:36%">Field</th><th style="width:64%">What it controls</th></tr>
+<tr><td>persona</td><td>How the caller talks and behaves</td></tr>
+<tr><td>goal</td><td>What the caller wants</td></tr>
+<tr><td>facts</td><td>What the caller knows if asked</td></tr>
+<tr><td>success_criteria</td><td>What counts as a pass</td></tr>
+<tr><td>policies</td><td>Rules checked on every call</td></tr>
+<tr><td>split</td><td>train = practice, holdout = exam</td></tr>
+<tr><td>max_turns</td><td>Caller turns before cut-off</td></tr>
+<tr><td>voice, noise</td><td>Accent, speed, background (audio)</td></tr>
+</table>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#6A7480">Demo data shown. Six sample calls ship with the app; replace them with your agent’s real call reasons.</p>
+<aside>This is the only tab where the business owner does real work. Each test call is a short block of fields. Persona and goal drive the simulated caller; facts are what it can answer when the bot asks, so they must match the test data the bot’s tools return. Success criteria and policies are what the scorer checks. Split marks a call as practice, which the coach learns from, or exam, which is held back to catch over-fitting. Voice and noise only matter for audio runs. Save validates the file before keeping it.</aside>
+</section>

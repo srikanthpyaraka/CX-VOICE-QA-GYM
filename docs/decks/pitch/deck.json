@@ -1,0 +1,18 @@
+{
+  "v": 4,
+  "createdOnFiles": {"v": 1, "at": "2026-10-19T09:00:00Z"},
+  "lists": "css",
+  "title": "Voice QA Gym",
+  "order": ["cover", "problem", "idea", "loop", "connect", "inputs", "call", "scorecard", "improve", "safety", "demo", "where", "status", "pilot"],
+  "sections": {
+    "s1": {"description": "Why voice bots need a better way to be tested", "start": "cover"},
+    "s2": {"description": "How the tool works, step by step", "start": "idea"},
+    "s3": {"description": "What it measures and how it improves the bot safely", "start": "scorecard"},
+    "s4": {"description": "Where to use it, where it stands, and the proposed pilot", "start": "where"}
+  },
+  "faces": {
+    "fraunces": {"family": "Fraunces", "href": "https://fonts.googleapis.com/css2?family=Fraunces:wght@400..700&display=swap"},
+    "public-sans": {"family": "Public Sans", "href": "https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700&display=swap"}
+  },
+  "designSystems": []
+}
