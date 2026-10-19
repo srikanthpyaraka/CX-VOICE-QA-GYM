@@ -35,7 +35,7 @@ and keeps a rewrite only when the scores go up.
 | `scripts/export_runs_to_bigquery.py` | Backfills saved runs into BigQuery |
 | `tests/` | Offline tests of the whole loop with a fake agent and fake Gemini |
 | `docs/live-demo/` | A presenter page that replays a recorded real run (calls, tool calls, verdicts) |
-| `docs/decks/` | Sources for the pitch deck and the tab-by-tab walkthrough deck |
+| `docs/decks/` | Two single-file presentations: `voice-qa-gym-pitch.html` (with talk track) and `voice-qa-gym-walkthrough.html` |
 | `docs/screenshots/` | App screenshots: `real-run/` from the live demo agent, the rest from the labelled demo-data run |
 | `docs/demo-data/` | The script that generates the clearly labelled demo run used for early screenshots |
 | `Dockerfile` | Container for Cloud Run (see below) |
@@ -184,10 +184,10 @@ These came from running the app against the demo agent in a fresh project.
 - `docs/live-demo/voice-qa-gym-live-run.html` is a standalone page. Open it in a browser and
   present with ← → and Space. Rebuild it from any recorded run with
   `python docs/live-demo/build.py <eval-run-id> [<auto-improve-run-id>]`.
-- `docs/decks/pitch/` and `docs/decks/walkthrough/` hold the slide sources: one HTML
-  `<section>` per slide on a 1920×1080 canvas, with speaker notes in `<aside>`, ordered by
-  `deck.json`. They were made as Claude Slides artifacts, which export to PowerPoint or PDF.
-  Screenshots marked "demo data" come from the scripted run in `docs/demo-data/`, not a live agent.
+- `docs/decks/voice-qa-gym-pitch.html` (15 slides) and `docs/decks/voice-qa-gym-walkthrough.html`
+  (12 slides) are single self-contained files, with screenshots embedded. Open one in a browser
+  and press ← → or click to move, **N** for speaker notes (the pitch deck's notes are the full
+  talk track) and **F** for fullscreen. All screenshots are from real runs against the demo agent.
 
 ## Audio mode
 
