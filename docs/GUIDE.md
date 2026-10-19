@@ -92,6 +92,47 @@ being tested and coached.
 Keep at least a third of the calls as `holdout`. They're how the app catches a change that only
 memorised the practice calls.
 
+
+**6a. Let AI write the test calls.** At the top of the Scenarios tab, **Write test calls with AI**:
+
+| Source | How |
+|---|---|
+| A PRD, policy doc or call-flow notes | Add the PDF, Markdown or text file under **Files**, or paste the text |
+| A whiteboard or Miro diagram | Export it as PNG, JPG or PDF and add it under **Files**. Gemini reads diagrams from images |
+| A live Miro board | Paste the board URL. Needs `MIRO_TOKEN` (a Miro API token with `boards:read`) set on the server |
+| The agent itself | Tick **Also read the connected agent's current instructions** |
+
+- **Write a new suite** drafts the number of calls you choose. It mixes core journeys, edge
+  cases, security checks, escalation and off-topic calls, and voice-specific traps like
+  misheard numbers. It splits about a third into exam calls and tags each call with the
+  requirements it covers (`covers:`).
+- **Refine the current suite** keeps your calls and IDs, sharpens vague success criteria, fills
+  coverage gaps and removes duplicates. Add requests under **Extra instructions**, e.g. "add two
+  angry callers".
+- The draft goes into the editor, with a **coverage** list and **gaps**: rules the sources leave
+  unclear (e.g. "what makes an order eligible for return?"). Decide those, add the answers to
+  your sources, and refine again. Nothing is saved until you click **Save**, and **Discard
+  draft** puts the previous suite back.
+- Tested on the sample OrderBot PRD: 8 valid calls in about 25 seconds, and 5 real gaps found.
+- **Always check that `facts` match the agent's test data.** Otherwise calls fail for the wrong reason.
+- The same thing from the command line:
+
+  ```bash
+  python scripts/gen_scenarios.py --project YOUR_PROJECT --from prd.pdf --from flow.png --count 10 --out my_suite.yaml
+  python scripts/gen_scenarios.py --project YOUR_PROJECT --refine scenarios/suite.yaml --notes "add two angry callers"
+  ```
+
+**6b. Tune scoring for your use case** (optional) with a `scoring:` block in the suite. For a
+chat agent you might drop the phone checks, and for a regulated flow you'd weight rules higher:
+
+```yaml
+scoring:
+  weights: {task_success: 0.4, policy_adherence: 0.4, groundedness: 0.2, tone: 0, voice: 0}  # must add up to 1
+  limits: {max_words: 80}   # also max_latency_s, max_audio_s, max_gap_s, max_wer
+  min_gain: 0.03            # how much a coached version must improve to be kept
+```
+
+Save checks the block and explains any mistake.
 ---
 
 ## Part 4. Test the agent as it is (Evaluate)
@@ -190,6 +231,13 @@ sandbox copy, push to production, create a version).
 
 **15. History tab:** every run is kept. Click a row to reopen it exactly as it finished.
 
+**Queued runs.** If you start a run while another is going, it waits in a queue and starts by
+itself (status **queued**). Runs never overlap, because each one may rewrite the agent.
+
+**If the server restarts mid-run,** the run is marked **interrupted** when it comes back. If it
+was a coaching run, the agent's original instructions are put back automatically, and the run
+records whether that worked. If it didn't, open the run and click **Restore original instruction**.
+
 ---
 
 ## Part 6. Send results to BigQuery (optional, off by default)
@@ -234,6 +282,35 @@ ORDER BY run_id, iteration;
 
 The app runs as one private Cloud Run service. You open it through `gcloud run services proxy`,
 and results live in a Cloud Storage bucket so they survive restarts.
+
+**One command** (safe to re-run; each step skips what already exists):
+
+```bash
+PROJECT=YOUR_PROJECT ./scripts/deploy_cloud_run.sh
+```
+
+Optional settings, combined as needed:
+
+```bash
+PROJECT=YOUR_PROJECT \
+  AGENT_PROJECT=project-with-the-agents \
+  BQ_DATASET=YOUR_PROJECT.voice_qa_gym \
+  MIRO_SECRET=miro-token \
+  INVOKERS="user:you@example.com,group:qa-team@example.com" \
+  ./scripts/deploy_cloud_run.sh
+```
+
+| Setting | Effect |
+|---|---|
+| `AGENT_PROJECT` | Agents live in another project; permissions are granted there |
+| `BQ_DATASET` | Turns on the BigQuery export and grants BigQuery roles |
+| `MIRO_SECRET` | Name of a Secret Manager secret holding a Miro API token, for reading boards in the generator |
+| `INVOKERS` | Who can open the app |
+| `REGION`, `SERVICE`, `BUCKET`, `MAX_PARALLEL_CALLS` | Defaults: `us-central1`, `voice-qa-gym`, `<project>-voice-qa-gym`, `2` |
+
+To store a Miro token as a secret: `printf %s "$TOKEN" | gcloud secrets create miro-token --data-file=- --project YOUR_PROJECT`.
+
+**The same steps by hand**, if you'd rather run or adapt them yourself:
 
 ```bash
 PROJECT=YOUR_PROJECT; REGION=us-central1; BUCKET=$PROJECT-voice-qa-gym

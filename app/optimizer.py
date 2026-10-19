@@ -94,11 +94,11 @@ def propose(instruction: str, result: dict, rejected: list[str]) -> dict:
     ), temperature=0.4)
 
 
-def accept(cand: dict, best: dict) -> bool:
-    if cand["train_reward"] is None or cand["train_reward"] <= best["train_reward"] + MIN_GAIN:
+def accept(cand: dict, best: dict, min_gain: float = MIN_GAIN) -> bool:
+    if cand["train_reward"] is None or cand["train_reward"] <= best["train_reward"] + min_gain:
         return False
     if best["holdout_reward"] is not None and cand["holdout_reward"] is not None:
-        return cand["holdout_reward"] >= best["holdout_reward"] - MIN_GAIN
+        return cand["holdout_reward"] >= best["holdout_reward"] - min_gain
     return True
 
 
@@ -140,7 +140,7 @@ def optimize(cx: CXAgent, agent_name: str, suite: dict, iterations: int,
             # A round with errored calls isn't comparable: the mean covers different calls.
             inconclusive = (f"inconclusive: {res['errors']} call(s) errored, not compared"
                             if res["errors"] else None)
-            ok = not inconclusive and accept(res, best)
+            ok = not inconclusive and accept(res, best, gym.resolve_scoring(suite)["min_gain"])
             if ok:
                 best = res
             elif not inconclusive:

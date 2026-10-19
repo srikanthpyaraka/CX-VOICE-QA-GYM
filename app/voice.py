@@ -14,18 +14,23 @@ _MARKDOWN = re.compile(r"(\*\*|__|`|^\s*#|^\s*[-*•]\s|^\s*\d+\.\s|\[.+?\]\(.+?
 _URL = re.compile(r"(https?://|www\.|\S+@\S+\.\w+)")
 
 
+LIMITS = {"max_words": MAX_WORDS, "max_latency_s": MAX_LATENCY_S, "max_audio_s": MAX_AUDIO_S,
+          "max_gap_s": MAX_GAP_S, "max_wer": MAX_WER}
+
+
 def turn_issues(text: str, latency_s: float | None,
-                audio_s: float | None = None) -> list[str]:
+                audio_s: float | None = None, limits: dict | None = None) -> list[str]:
     """audio_s is set only in audio mode; it switches length and latency rules
-    from text proxies to measured audio."""
+    from text proxies to measured audio. limits overrides LIMITS (suite `scoring:`)."""
+    lim = {**LIMITS, **(limits or {})}
     issues = []
     if not text.strip() and not audio_s:
         issues.append("empty_response")
         return issues
     if audio_s is not None:
-        if audio_s > MAX_AUDIO_S:
+        if audio_s > lim["max_audio_s"]:
             issues.append("too_long_for_tts")
-    elif len(text.split()) > MAX_WORDS:
+    elif len(text.split()) > lim["max_words"]:
         issues.append("too_long_for_tts")
     if _MARKDOWN.search(text):
         issues.append("markdown_read_aloud")
@@ -33,7 +38,7 @@ def turn_issues(text: str, latency_s: float | None,
         issues.append("url_or_email_read_aloud")
     if text.count("?") > 1:
         issues.append("multiple_questions")
-    if latency_s is not None and latency_s > (MAX_GAP_S if audio_s is not None else MAX_LATENCY_S):
+    if latency_s is not None and latency_s > (lim["max_gap_s"] if audio_s is not None else lim["max_latency_s"]):
         issues.append("high_latency")
     return issues
 

@@ -23,14 +23,19 @@ def init(project: str) -> None:
                                location=os.environ.get("GEMINI_LOCATION", "global"))
 
 
-def generate_json(prompt: str, temperature: float = 0.2) -> dict:
+def file_part(data: bytes, mime_type: str):
+    """A PDF, image or text file Gemini reads alongside the prompt."""
+    return types.Part.from_bytes(data=data, mime_type=mime_type)
+
+
+def generate_json(prompt: str, temperature: float = 0.2, parts: list | None = None) -> dict:
     if _client is None:
         raise RuntimeError("LLM not initialised: connect to a project first")
     for delay in (5, 10, 20, 40, None):
         try:
             resp = _client.models.generate_content(
                 model=MODEL,
-                contents=prompt,
+                contents=[*(parts or []), prompt],
                 config=types.GenerateContentConfig(
                     temperature=temperature, response_mime_type="application/json"),
             )

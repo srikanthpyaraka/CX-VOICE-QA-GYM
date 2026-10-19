@@ -104,6 +104,27 @@ dialog .body { padding: 16px; }
 
 <section id="suite">
   <div class="card">
+    <h2>Write test calls with AI</h2>
+    <p class="msg" style="margin:0 0 12px">Gemini drafts a suite from your sources, or improves the current one. The draft goes into the editor below for you to review. Nothing is saved until you click Save.</p>
+    <div class="row">
+      <label>Mode<select id="gen-mode" onchange="$('#gen-count-wrap').hidden = this.value === 'refine'"><option value="generate">Write a new suite</option><option value="refine">Refine the current suite</option></select></label>
+      <label id="gen-count-wrap">Test calls<input type="number" id="gen-count" value="8" min="3" max="30"></label>
+      <label>Channel<select id="gen-channel"><option value="voice">Voice</option><option value="chat">Chat</option></select></label>
+    </div>
+    <div class="grid2" style="margin-top:12px">
+      <label>Files: PRD, call flows, policies (PDF, Markdown, text) or diagram images (PNG/JPG, e.g. an exported Miro board)<input type="file" id="gen-files" multiple accept=".pdf,.md,.txt,.csv,.json,.yaml,.yml,.png,.jpg,.jpeg,.webp"></label>
+      <label>Miro board URL or ID<input type="text" id="gen-miro" placeholder="https://miro.com/app/board/…"><span class="msg" id="gen-miro-note" style="margin:0"></span></label>
+    </div>
+    <label style="margin-top:12px">Or paste text: requirements, call-flow notes, FAQs<textarea id="gen-text" style="min-height:110px" spellcheck="false"></textarea></label>
+    <div class="row" style="margin-top:10px">
+      <label class="inline"><input type="checkbox" id="gen-agent"> Also read the connected agent's current instructions</label>
+    </div>
+    <label style="margin-top:10px">Extra instructions (optional)<input type="text" id="gen-notes" placeholder="e.g. focus on refunds; add two angry callers; keep goals under 20 words"></label>
+    <div class="row" style="margin-top:12px"><button class="primary" id="btn-gen">Generate draft</button><button class="sec" id="btn-gen-discard" hidden>Discard draft</button><span class="msg" id="gen-msg"></span></div>
+    <div class="err" id="gen-err"></div>
+    <div id="gen-result"></div>
+  </div>
+  <div class="card">
     <h2>Test suite (YAML)</h2>
     <textarea id="suite-yaml" spellcheck="false"></textarea>
     <div class="row" style="margin-top:10px"><button class="primary" id="btn-save-suite">Save</button><span class="msg" id="suite-msg"></span></div>
@@ -133,7 +154,7 @@ dialog .body { padding: 16px; }
     <h2>Auto-improve loop</h2>
     <div class="row">
       <label>Iterations<input type="number" id="opt-iters" value="3" min="1" max="10"></label>
-      <label>Trials per scenario<input type="number" id="opt-trials" value="1" min="1" max="5"></label>
+      <label>Trials per scenario<input type="number" id="opt-trials" value="2" min="1" max="5"></label>
       <label>Mode<select id="opt-mode" onchange="modeChanged('opt')"><option value="text">Text turns</option><option value="audio">Full audio (TTS → BidiRunSession)</option></select></label>
       <label id="opt-noise-wrap" hidden>Background noise<select id="opt-noise" class="noise-select"><option value="">Per-scenario only</option></select></label>
       <label class="inline"><input type="checkbox" id="opt-fakes" checked> Use tool fakes</label>
@@ -205,10 +226,37 @@ async function loadInstruction() {
 
 // ----- suite -----
 api("/api/suite").then(r => $("#suite-yaml").value = r.yaml);
+api("/api/config").then(c => { $("#gen-miro-note").textContent = c.miro ? "Reads sticky notes, shapes and arrows through the Miro API."
+  : "Needs MIRO_TOKEN on the server. Without it, export the board as an image and add it under Files."; $("#gen-miro").disabled = !c.miro; });
+const fileB64 = f => new Promise((ok, fail) => { const r = new FileReader();
+  r.onload = () => ok({ name: f.name, data_b64: String(r.result).split(",")[1] }); r.onerror = fail; r.readAsDataURL(f); });
+let beforeDraft = null;
+$("#btn-gen").onclick = async () => {
+  $("#gen-err").textContent = ""; $("#gen-result").innerHTML = "";
+  const btn = $("#btn-gen"); btn.disabled = true; $("#gen-msg").textContent = "Reading sources and drafting… (about a minute)";
+  try {
+    const files = await Promise.all([...$("#gen-files").files].map(fileB64));
+    const r = await api("/api/scenarios/generate", { method: "POST", body: {
+      mode: $("#gen-mode").value, count: +$("#gen-count").value, channel: $("#gen-channel").value,
+      notes: $("#gen-notes").value, text: $("#gen-text").value, files, miro_board: $("#gen-miro").value.trim() || null,
+      use_agent_instruction: $("#gen-agent").checked, agent_name: conn ? $("#agent").value : null } });
+    beforeDraft = beforeDraft ?? $("#suite-yaml").value;
+    $("#suite-yaml").value = r.yaml; $("#btn-gen-discard").hidden = false;
+    $("#gen-msg").textContent = `Draft with ${r.scenarios} test calls is in the editor below. Review it, then Save.`;
+    const list = (title, items, fmt) => items && items.length ? `<h2 style="font-size:13px;margin:14px 0 6px">${title}</h2><ul style="margin:0;padding-left:18px">${items.map(fmt).join("")}</ul>` : "";
+    $("#gen-result").innerHTML = (r.valid ? "" : `<p class="err">The draft doesn't pass checks yet: ${esc(r.problem)}. Fix it in the editor before saving.</p>`)
+      + list("What changed", r.changes, c => `<li>${esc(c)}</li>`)
+      + list("Requirement coverage", r.coverage, c => `<li>${esc(c.requirement)}: ${esc((c.scenarios || []).join(", ") || "not covered")}</li>`)
+      + list("Gaps in the sources (decide these, then refine)", r.gaps, g => `<li>${esc(g)}</li>`);
+  } catch (e) { $("#gen-err").textContent = e.message; $("#gen-msg").textContent = ""; }
+  btn.disabled = false;
+};
+$("#btn-gen-discard").onclick = () => { if (beforeDraft !== null) $("#suite-yaml").value = beforeDraft;
+  beforeDraft = null; $("#btn-gen-discard").hidden = true; $("#gen-result").innerHTML = ""; $("#gen-msg").textContent = "Draft discarded."; };
 $("#btn-save-suite").onclick = async () => {
   $("#suite-err").textContent = ""; $("#suite-msg").textContent = "";
   try { const r = await api("/api/suite", { method: "PUT", body: { yaml: $("#suite-yaml").value } });
-        $("#suite-msg").textContent = `Saved, ${r.scenarios} scenarios`; }
+        $("#suite-msg").textContent = `Saved, ${r.scenarios} scenarios`; beforeDraft = null; $("#btn-gen-discard").hidden = true; }
   catch (e) { $("#suite-err").textContent = e.message; }
 };
 
@@ -246,27 +294,28 @@ $("#btn-opt").onclick = async () => {
   } catch (e) { $("#opt-err").textContent = e.message; }
 };
 
+// The latest run started (or opened) in a view owns its display; older pollers stop.
+const watching = {};
 async function poll(id, view) {
-  const btn = view === "eval" ? $("#btn-eval") : $("#btn-opt");
-  btn.disabled = true;
-  while (true) {
+  watching[view] = id;
+  while (watching[view] === id) {
     let run;
     try { run = await api("/api/runs/" + id); } catch (e) { $(`#${view}-err`).textContent = e.message; break; }
+    if (watching[view] !== id) break;
     showRun(run);
-    if (run.status !== "running") break;
+    if (run.status !== "running" && run.status !== "queued") break;
     await new Promise(r => setTimeout(r, 1500));
   }
-  btn.disabled = false;
 }
 
 function showRun(run) {
   const view = run.kind === "eval" ? "eval" : "opt";
   showTab(view);
   const total = run.episodes_total || 1;
-  $(`#${view}-bar`).style.width = run.status === "running" ? (100 * run.episodes_done / total) + "%" : "100%";
+  $(`#${view}-bar`).style.width = run.status === "queued" ? "0%" : run.status === "running" ? (100 * run.episodes_done / total) + "%" : "100%";
   const last = run.messages[run.messages.length - 1] || "";
   $(`#${view}-msg`).textContent = `Run ${run.id} · ${run.status}` +
-    (run.status === "running" ? ` · ${run.episodes_done}/${run.episodes_total} episodes · ${last}` : "");
+    (run.status === "running" ? ` · ${run.episodes_done}/${run.episodes_total} episodes · ${last}` : run.status === "queued" ? ` · waiting for the run ahead to finish` : "");
   $(`#${view}-err`).textContent = run.messages.filter(m => m.startsWith("ERROR")).join("\n");
   if (run.kind === "eval") $("#eval-result").innerHTML = run.result ? resultHTML(run.result, "e", run.id) : "";
   else renderOpt(run);
@@ -322,7 +371,7 @@ let lastRun = null;
 function renderOpt(run) {
   lastRun = run;
   const its = run.iterations;
-  const done = run.status !== "running";
+  const done = run.status !== "running" && run.status !== "queued";
   const best = its.filter(i => i.accepted).pop();
   const rows = its.map(it => {
     const r = it.result;
@@ -397,7 +446,8 @@ async function loadRuns() {
   $("#runs tbody").innerHTML = runs.map(r => `<tr class="click" onclick="openRun('${r.id}')"><td class="num">${r.id}</td><td>${r.kind}</td><td>${r.modality}</td>
     <td class="muted">${esc((r.agent_name || "").split("/").pop())}</td><td>${r.status}</td></tr>`).join("") || `<tr><td colspan="5" class="muted">No runs yet</td></tr>`;
 }
-async function openRun(id) { const run = await api("/api/runs/" + id); run.status === "running" ? poll(id, run.kind === "eval" ? "eval" : "opt") : showRun(run); }
+async function openRun(id) { const run = await api("/api/runs/" + id); const view = run.kind === "eval" ? "eval" : "opt";
+  if (run.status === "running" || run.status === "queued") poll(id, view); else { watching[view] = id; showRun(run); } }
 </script>
 </body>
 </html>

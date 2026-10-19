@@ -30,6 +30,9 @@ and keeps a rewrite only when the scores go up.
 | `app/`, `static/` | The web app: FastAPI backend and a single-page UI (Connect, Scenarios, Evaluate, Auto-improve, History) |
 | `scenarios/` | The test suite (`suite.yaml`) and background-noise WAVs for audio mode |
 | `scripts/create_demo_agent.py` | Creates a self-contained demo voice agent in CX Agent Studio to test against |
+| `scripts/gen_scenarios.py` | Drafts or refines a test suite from PRDs, documents, diagram images or a Miro board |
+| `scripts/deploy_cloud_run.sh` | One-command, re-runnable deploy to Cloud Run |
+| `scripts/export_runs_to_bigquery.py` | Backfills saved runs into BigQuery |
 | `tests/` | Offline tests of the whole loop with a fake agent and fake Gemini |
 | `docs/live-demo/` | A presenter page that replays a recorded real run (calls, tool calls, verdicts) |
 | `docs/decks/` | Sources for the pitch deck and the tab-by-tab walkthrough deck |
@@ -62,6 +65,8 @@ Gemini runs on Vertex AI in the same project (`GEMINI_MODEL`, default `gemini-2.
 | Env | `GEMINI_MODEL`, `GEMINI_LOCATION`, `GOOGLE_API_KEY` | Optional |
 | Env | `SUITE_PATH`, `RUNS_DIR` | Optional storage paths (used on Cloud Run) |
 | Env | `BQ_DATASET` (+ `BQ_LOCATION`) | Optional. Set `project.dataset` to also save every call and round to BigQuery. Off when unset |
+| Env | `MIRO_TOKEN` | Optional. Miro API token (`boards:read`) so the scenario generator can read boards. Without it, upload an exported image |
+| Suite | `scoring:` | Optional per-use-case weights, phone limits and the keep threshold. See `scenarios/suite.yaml` |
 | Env | `MAX_PARALLEL_CALLS` | Calls run at once (default 2). Use 1 on projects with the default agent-model token quota |
 
 ## Create a demo agent to test against
@@ -108,6 +113,14 @@ cxas push --app-dir ./backup_my_agent --to "My Agent QA" --project-id $PROJECT -
    prod, create a version).
 
 ## Deploy to Cloud Run
+
+```bash
+PROJECT=my-project ./scripts/deploy_cloud_run.sh
+```
+
+That runs every step below and is safe to re-run. Optional `BQ_DATASET`, `MIRO_SECRET`,
+`AGENT_PROJECT` and `INVOKERS` are explained in [docs/GUIDE.md](docs/GUIDE.md) Part 7. The
+manual equivalent:
 
 ```bash
 PROJECT=my-project; REGION=us-central1; BUCKET=$PROJECT-voice-qa-gym
@@ -215,7 +228,9 @@ playback, so plan on 1–3 minutes per episode. The project needs `ces.googleapi
 - Nothing is kept until you click **Apply** on an iteration. **Restore original** is always
   available on the run.
 - **Use tool fakes** is on by default, so evaluations don't hit live backends.
-- Only one run at a time, because runs mutate the same agent.
+- Runs never overlap, because each may rewrite the agent. Extra runs wait in a queue.
+- If the server restarts mid-run, the run is marked *interrupted*. A coaching run's original
+  instruction is restored automatically on startup.
 
 ## Pieces
 
@@ -228,6 +243,7 @@ playback, so plan on 1–3 minutes per episode. The project needs `ces.googleapi
 | `app/optimizer.py` | Propose, validate (keeps `{@TOOL:}` refs and GECX tags), evaluate, accept/reject |
 | `app/cxas_client.py` | cxas-scrapi `Agents` / `Sessions` wrapper, TTS, timed bidi handler |
 | `app/bq.py` | Optional BigQuery export (`calls` and `rounds` tables) |
+| `app/scenario_gen.py`, `app/miro.py` | AI scenario generator and refiner; Miro board reader |
 | `scenarios/suite.yaml` | Test suite with train/holdout split |
 
 Reward weights are in `gym.WEIGHTS`: task 0.45, policy 0.2, grounding 0.15, voice 0.15, tone 0.05.
@@ -247,3 +263,10 @@ Reward weights are in `gym.WEIGHTS`: task 0.45, policy 0.2, grounding 0.15, voic
 - LLM judging is noisy. Use `trials` of 2–3 before trusting a small gain.
 - Each candidate is tested on the agent's draft. If the app's sessions run on a deployment,
   draft edits may not show up until it's redeployed (not verified).
+- Auto-improve tests candidates on the agent itself (restored afterwards), so always point it
+  at a copy. Testing on a throwaway clone of the app would be safer; it isn't built yet.
+- The app has no login of its own; it relies on Cloud Run's IAM (`roles/run.invoker`).
+- Only CX Agent Studio agents are supported. Other platforms would need an adapter alongside
+  `app/cxas_client.py`.
+- The Miro reader follows Miro's REST API v2 docs and is unit-tested, but hasn't been run
+  against a live board. Exported diagrams (PNG and PDF) and text PRDs were tested live.

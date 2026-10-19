@@ -28,14 +28,45 @@ WEIGHTS = {"task_success": 0.45, "policy_adherence": 0.2, "groundedness": 0.15,
            "tone": 0.05, "voice": 0.15}
 
 
-def episode_reward(scores: dict) -> float:
-    return round(sum(WEIGHTS[k] * float(scores[k]) for k in WEIGHTS), 4)
+
+
+def resolve_scoring(suite: dict) -> dict:
+    """The suite's optional `scoring:` block merged over the defaults, validated.
+
+        scoring:
+          weights: {task_success: 0.5, policy_adherence: 0.3, groundedness: 0.2, tone: 0, voice: 0}
+          limits: {max_words: 60, max_gap_s: 1.5}     # see voice.LIMITS
+          min_gain: 0.03                               # how much a coached version must improve
+    """
+    from app.optimizer import MIN_GAIN
+    cfg = suite.get("scoring") or {}
+    unknown = set(cfg) - {"weights", "limits", "min_gain"}
+    if unknown:
+        raise ValueError(f"scoring: unknown keys {sorted(unknown)}")
+    weights = {**WEIGHTS, **(cfg.get("weights") or {})}
+    if set(weights) != set(WEIGHTS) or any(not isinstance(v, (int, float)) or v < 0 for v in weights.values()):
+        raise ValueError(f"scoring.weights: use only {sorted(WEIGHTS)}, each a number >= 0")
+    if abs(sum(weights.values()) - 1) > 0.01:
+        raise ValueError(f"scoring.weights must add up to 1 (they add up to {sum(weights.values()):.2f})")
+    limits = {**voice.LIMITS, **(cfg.get("limits") or {})}
+    if set(limits) != set(voice.LIMITS) or any(not isinstance(v, (int, float)) or v <= 0 for v in limits.values()):
+        raise ValueError(f"scoring.limits: use only {sorted(voice.LIMITS)}, each a number > 0")
+    min_gain = cfg.get("min_gain", MIN_GAIN)
+    if not isinstance(min_gain, (int, float)) or not 0 <= min_gain < 1:
+        raise ValueError("scoring.min_gain must be a number from 0 to 1")
+    return {"weights": weights, "limits": limits, "min_gain": float(min_gain)}
+
+
+def episode_reward(scores: dict, weights: dict | None = None) -> float:
+    w = weights or WEIGHTS
+    return round(sum(w[k] * float(scores[k]) for k in w), 4)
 
 
 class VoiceAgentEnv:
     def __init__(self, cx: CXAgent, scenario: dict, policies: list[str],
                  use_tool_fakes: bool = True, max_turns: int | None = None,
-                 audio: dict | None = None, audio_dir: Path | None = None):
+                 audio: dict | None = None, audio_dir: Path | None = None,
+                 scoring: dict | None = None):
         """audio=None -> text turns. audio={"voice": {...}, "background_noise": "file.wav"|None}
         holds run-level defaults; the scenario's own voice/background_noise override them.
         audio_dir: where per-turn WAVs are saved (audio mode only)."""
@@ -52,6 +83,7 @@ class VoiceAgentEnv:
                 "background_noise_file": str(NOISE_DIR / noise) if noise else None,
             }
         self.audio_dir = audio_dir
+        self.scoring = scoring or resolve_scoring({})
 
     def reset(self) -> dict:
         self.session_id = self.cx.new_session()
@@ -86,7 +118,7 @@ class VoiceAgentEnv:
                 user_turn["audio"] = f"{self.episode_id}/{n}-user.wav"
                 agent_turn["audio"] = f"{self.episode_id}/{n + 1}-agent.wav"
         agent_turn["voice_issues"] = voice.turn_issues(
-            agent_turn["text"], r["latency_s"], agent_turn.get("audio_s"))
+            agent_turn["text"], r["latency_s"], agent_turn.get("audio_s"), self.scoring["limits"])
         self.transcript.append(agent_turn)
 
         if r["session_ended"]:
@@ -99,7 +131,7 @@ class VoiceAgentEnv:
         agent_turns = [t for t in self.transcript if t["role"] == "agent"]
         scores = judge.judge(self.scenario, self.transcript, self.policies)
         scores["voice"] = voice.score(agent_turns)
-        reward = episode_reward(scores)
+        reward = episode_reward(scores, self.scoring["weights"])
         info = {"end_reason": reason, "scores": scores,
                 "latency": voice.latency_stats(agent_turns)}
         return None, reward, True, info
@@ -133,8 +165,9 @@ def evaluate(cx: CXAgent, suite: dict, use_tool_fakes: bool = True,
     workers = workers or int(os.environ.get("MAX_PARALLEL_CALLS", "2"))
     if audio is not None:
         audio = {**audio, "voice": {**suite.get("voice", {}), **(audio.get("voice") or {})}}
+    scoring = resolve_scoring(suite)
     envs = [VoiceAgentEnv(cx, s, suite.get("policies", []), use_tool_fakes,
-                          audio=audio, audio_dir=audio_dir)
+                          audio=audio, audio_dir=audio_dir, scoring=scoring)
             for s in suite["scenarios"] for _ in range(trials)]
     episodes = []
     with ThreadPoolExecutor(max_workers=workers) as pool:
@@ -142,10 +175,10 @@ def evaluate(cx: CXAgent, suite: dict, use_tool_fakes: bool = True,
             episodes.append(ep)
             if on_episode:
                 on_episode(ep)
-    return summarize(episodes)
+    return summarize(episodes, scoring["limits"]["max_wer"])
 
 
-def summarize(episodes: list[dict]) -> dict:
+def summarize(episodes: list[dict], max_wer: float = voice.MAX_WER) -> dict:
     def mean(xs):
         return round(sum(xs) / len(xs), 4) if xs else None
 
@@ -171,7 +204,7 @@ def summarize(episodes: list[dict]) -> dict:
         "latency": voice.latency_stats(agent_turns),
         "voice_issues": issue_counts,
         "asr": {"mean_wer": mean(wers),
-                "misheard_turns": sum(1 for w in wers if w > voice.MAX_WER),
+                "misheard_turns": sum(1 for w in wers if w > max_wer),
                 "turns": len(wers)} if wers else None,
         "errors": len(episodes) - len(ok),
     }

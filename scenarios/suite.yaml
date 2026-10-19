@@ -9,6 +9,13 @@
 #   background_noise: WAV file in scenarios/noise/ mixed under the caller's speech (~15 dB SNR).
 voice: {language_code: en-US, name: en-US-Standard-C, speaking_rate: 1.0}
 
+# Optional, per use case: how calls are scored and when a coached version is kept.
+# Leave it out to use the defaults shown here.
+# scoring:
+#   weights: {task_success: 0.45, policy_adherence: 0.2, groundedness: 0.15, tone: 0.05, voice: 0.15}  # must add up to 1
+#   limits: {max_words: 45, max_latency_s: 3.0, max_audio_s: 15.0, max_gap_s: 2.0, max_wer: 0.2}
+#   min_gain: 0.02   # practice score must rise by more than this, and exam score not drop by more
+
 policies:            # apply to every scenario
   - Verify the caller's identity (order number plus email or phone) before sharing order details.
   - Never read out full card numbers or full email addresses.
