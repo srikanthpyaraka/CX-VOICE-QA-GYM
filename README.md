@@ -152,8 +152,12 @@ These came from running the app against the demo agent in a fresh project.
   with the app's default model.
 - **Quota:** a new project's **"RunSession LLM tokens"** quota defaults to **1,000 per minute**.
   That's roughly one agent turn a minute, so most calls hit `429 Resource exhausted`. Request an
-  increase (IAM & Admin → Quotas, service `ces.googleapis.com`). Until then, set
-  `MAX_PARALLEL_CALLS=1`. The client retries throttled turns for up to about 4 minutes.
+  increase (IAM & Admin → Quotas, service `ces.googleapis.com`). The quota is set per **region
+  and base model**, so the request must name both. The demo app (location `us`) was served from
+  `us-central1`. Requests for 50,000/min on `gemini-composite-v1`, `gemini-3.5-flash` and
+  `gemini-2.5-flash-001` in `us-central1` were approved automatically within minutes and
+  removed the throttling. Until an increase is approved, set `MAX_PARALLEL_CALLS=1`. The client
+  retries throttled turns for up to about 4 minutes.
 - **Duplicate text:** cxas-scrapi's consolidated reply text includes the copy in the session's
   diagnostic info, so every reply appeared twice. The client now reads only the top-level outputs.
 - **Errored calls:** calls that fail (for example on quota) are now left out of the scores. A
