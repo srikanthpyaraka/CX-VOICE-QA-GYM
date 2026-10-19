@@ -150,7 +150,7 @@ dialog .body { padding: 16px; }
 </section>
 
 <section id="history">
-  <div class="card"><h2>Runs</h2><table id="runs"><thead><tr><th>Run</th><th>Type</th><th>Mode</th><th>Agent</th><th>Status</th></tr></thead><tbody></tbody></table></div>
+  <div class="card"><h2>Runs</h2><p class="msg" id="bq-status" style="margin:0 0 10px"></p><table id="runs"><thead><tr><th>Run</th><th>Type</th><th>Mode</th><th>Agent</th><th>Status</th></tr></thead><tbody></tbody></table></div>
 </section>
 </main>
 
@@ -389,6 +389,9 @@ async function applyIter(n) {
 }
 
 // ----- history -----
+api("/api/config").then(c => $("#bq-status").textContent = c.bigquery
+  ? `BigQuery export is on: each finished call is also saved to ${c.bigquery} (tables calls and rounds).`
+  : "BigQuery export is off. Results are saved as files in runs/. Set BQ_DATASET=project.dataset to turn it on.");
 async function loadRuns() {
   const runs = await api("/api/runs");
   $("#runs tbody").innerHTML = runs.map(r => `<tr class="click" onclick="openRun('${r.id}')"><td class="num">${r.id}</td><td>${r.kind}</td><td>${r.modality}</td>

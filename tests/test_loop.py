@@ -158,3 +158,33 @@ def test_errored_calls_excluded_and_round_inconclusive(monkeypatch):
     assert cand["result"]["errors"] == 2 and cand["result"]["train_reward"] is None
     assert not cand["accepted"] and cand["invalid"].startswith("inconclusive")
     assert cx.instruction == BAD
+
+
+def test_bigquery_rows_match_schema():
+    from app import bq
+    monkey_run = {"id": "r1", "kind": "optimize", "agent_name": "a",
+                  "conn": {"project": "p", "location": "us", "app_id": "x"}, "params": {"modality": "audio"}}
+    ep_ok = {"scenario_id": "s1", "split": "train", "reward": 0.8, "end_reason": "max_turns",
+             "scores": {"task_success": True, "policy_adherence": 1, "groundedness": 1, "tone": 1, "voice": 0.5,
+                        "summary": "ok", "failures": [{"turn": 1, "detail": "long"}]},
+             "transcript": [{"role": "user", "text": "hi", "wer": 0.1},
+                            {"role": "agent", "text": "hello", "latency_s": 1.5, "voice_issues": ["too_long_for_tts"]}]}
+    ep_err = {"scenario_id": "s2", "split": "holdout", "reward": 0.0, "transcript": [], "error": "429"}
+    result = {**gym.summarize([ep_ok, ep_err]), "episodes": [ep_ok, ep_err]}
+    round_row, calls = bq.build_rows(monkey_run, result, iteration=1, outcome="kept",
+                                     instruction="<role>x</role>", changes=["shorter"])
+    assert set(round_row) == {c for c, _ in bq.ROUNDS}
+    assert all(set(c) == {n for n, _ in bq.CALLS} for c in calls)
+    assert round_row["train_reward"] == 0.8 and round_row["errors"] == 1 and round_row["outcome"] == "kept"
+    assert round_row["instruction_sha"] and round_row["mean_wer"] == 0.1
+    assert calls[0]["voice_issues"] == "too_long_for_tts" and calls[0]["latency_p50_s"] == 1.5
+    assert calls[1]["error"] == "429" and calls[1]["task_success"] is None
+
+
+
+def test_prompt_markers_stripped_from_rewrite(monkeypatch):
+    assert optimizer.clean_instruction("<<<\n<role>x</role>\n>>>") == "<role>x</role>"
+    assert optimizer.clean_instruction("```xml\n<role>x</role>\n```") == "<role>x</role>"
+    assert optimizer.clean_instruction("<role>a >>> b</role>") == "<role>a >>> b</role>"
+    cx, its = run_loop(monkeypatch, "<<<\n" + GOOD + "\n>>>")
+    assert its[1]["instruction"] == GOOD and its[1]["accepted"]

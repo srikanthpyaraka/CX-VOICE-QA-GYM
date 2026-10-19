@@ -20,6 +20,9 @@ and keeps a rewrite only when the scores go up.
   kept only if train ↑ by >0.02 and holdout doesn't drop by >0.02
 ```
 
+> **New here? Start with [docs/GUIDE.md](docs/GUIDE.md):** step by step from sign-in to watching
+> the coach improve an agent, the optional BigQuery export, and deploying on Cloud Run.
+
 ## What's in this repo
 
 | Path | What it is |
@@ -58,6 +61,7 @@ Gemini runs on Vertex AI in the same project (`GEMINI_MODEL`, default `gemini-2.
 | Run | Mode, trials, tool fakes, noise, iterations | Iterations and the sandbox confirmation apply to Auto-improve only |
 | Env | `GEMINI_MODEL`, `GEMINI_LOCATION`, `GOOGLE_API_KEY` | Optional |
 | Env | `SUITE_PATH`, `RUNS_DIR` | Optional storage paths (used on Cloud Run) |
+| Env | `BQ_DATASET` (+ `BQ_LOCATION`) | Optional. Set `project.dataset` to also save every call and round to BigQuery. Off when unset |
 | Env | `MAX_PARALLEL_CALLS` | Calls run at once (default 2). Use 1 on projects with the default agent-model token quota |
 
 ## Create a demo agent to test against
@@ -112,12 +116,11 @@ gcloud services enable run.googleapis.com cloudbuild.googleapis.com ces.googleap
   texttospeech.googleapis.com aiplatform.googleapis.com --project $PROJECT
 gcloud storage buckets create gs://$BUCKET --location $REGION --project $PROJECT
 gcloud iam service-accounts create voice-qa-gym --project $PROJECT
-for ROLE in roles/aiplatform.user roles/serviceusage.serviceUsageConsumer; do
+for ROLE in roles/ces.agentEditor roles/aiplatform.user roles/serviceusage.serviceUsageConsumer; do
   gcloud projects add-iam-policy-binding $PROJECT --member serviceAccount:$SA --role $ROLE
 done
 gcloud storage buckets add-iam-policy-binding gs://$BUCKET --member serviceAccount:$SA --role roles/storage.objectUser
-# Also grant $SA a CX Agent Studio (CES) role that can read and update agents and run
-# sessions (IAM console, search "ces"). The exact role name isn't verified here.
+# roles/ces.agentEditor covers agents get/list/update, apps get/list, and runSession + bidiRunSession.
 
 gcloud run deploy voice-qa-gym --source . --region $REGION --project $PROJECT \
   --service-account $SA --no-allow-unauthenticated \
@@ -140,7 +143,7 @@ Why these flags:
 - **`--no-cpu-throttling`**: runs execute in background threads after the HTTP request returns.
 - **Bucket volume**: keeps the suite, run history and audio across restarts.
 
-If the agent lives in another project, grant `$SA` the CES role and `roles/aiplatform.user`
+If the agent lives in another project, grant `$SA` `roles/ces.agentEditor` and `roles/aiplatform.user`
 there. Gemini calls run in the agent's project.
 
 ## Findings from the first live run (Oct 2026)
@@ -224,6 +227,7 @@ playback, so plan on 1–3 minutes per episode. The project needs `ces.googleapi
 | `app/voice.py` | Deterministic TTS-readiness checks and latency p50/p95 |
 | `app/optimizer.py` | Propose, validate (keeps `{@TOOL:}` refs and GECX tags), evaluate, accept/reject |
 | `app/cxas_client.py` | cxas-scrapi `Agents` / `Sessions` wrapper, TTS, timed bidi handler |
+| `app/bq.py` | Optional BigQuery export (`calls` and `rounds` tables) |
 | `scenarios/suite.yaml` | Test suite with train/holdout split |
 
 Reward weights are in `gym.WEIGHTS`: task 0.45, policy 0.2, grounding 0.15, voice 0.15, tone 0.05.

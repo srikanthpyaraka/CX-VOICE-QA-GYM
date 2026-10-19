@@ -141,7 +141,8 @@ kbd { font: 12px var(--mono); border: 1px solid var(--line); border-bottom-width
   <section class="stage" id="s-coach" hidden>
     <p class="eyebrow">Step 4 · The coach rewrites, the test decides</p>
     <h1 id="coach-h"></h1>
-    <div class="panel" style="margin-top:28px"><svg class="chart" id="chart" viewBox="0 0 1000 320" role="img" aria-label="Score by coaching round"></svg></div>
+    <div class="panel" style="margin-top:28px"><svg class="chart" id="chart" viewBox="0 0 1000 320" role="img" aria-label="Score by coaching round"></svg>
+      <p class="note" style="margin-top:8px"><b style="color:var(--accent)">Solid line</b>: practice calls the coach learns from. <b>Dashed line</b>: exam calls it never sees. Dot = kept, cross = rejected.</p></div>
     <div class="panel tablewrap" style="margin-top:24px"><table id="it-table"></table></div>
   </section>
 
@@ -263,7 +264,7 @@ if (opt) {
     const out = !i.iteration ? ["hold", "start"] : i.invalid ? ["err", i.invalid.startsWith("inconclusive") ? "inconclusive" : "blocked"] : i.accepted ? ["pass", "kept"] : ["fail", "rejected"];
     const r = i.result || {};
     return `<tr><td class="num">${i.iteration || "–"}</td><td><span class="pill ${out[0]}">${out[1]}</span></td><td class="num">${fx(r.train_reward)}</td><td class="num">${fx(r.holdout_reward)}</td>
-      <td>${esc(i.iteration ? (i.invalid ? i.invalid + ". " : "") + (i.changes || []).join("; ") : "The agent as created")}</td></tr>`; }).join("");
+      <td>${i.iteration ? (i.invalid ? esc(i.invalid) + ". " : "") + `<ul style="margin:0;padding-left:18px">${(i.changes || []).map(c => `<li>${esc(c.replace(/\.$/, ""))}</li>`).join("")}</ul>` : "The agent as created"}</td></tr>`; }).join("");
 }
 
 const fromHash = () => go(Math.max(0, STEPS.findIndex(([id]) => id.slice(2) === location.hash.slice(1))));

@@ -1,7 +1,7 @@
 <section id="status" data-transition="fade" style="background:#E8EDF2;color:#17202B;font-family:'Public Sans', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:48px">
 <div style="display:flex;flex-direction:column;gap:20px">
 <p style="font-size:24px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#B34A14">Where it stands</p>
-<h2 style="font-family:'Fraunces', Georgia, serif;font-size:72px;font-weight:600;line-height:1.1">Working against a real agent, with a quota to raise</h2>
+<h2 style="font-family:'Fraunces', Georgia, serif;font-size:72px;font-weight:600;line-height:1.1">Working against a real agent, and improving it</h2>
 </div>
 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:32px">
 <div style="display:flex;flex-direction:column;gap:20px;background:#FFFFFF;padding:44px;border-radius:16px">
@@ -9,27 +9,27 @@
 <ul style="font-size:28px;line-height:1.5;color:#26313D">
 <li>Web app: connect, test, score, coach, approve</li>
 <li>Demo voice agent built in our Google Cloud project</li>
-<li>First real run: 6 calls, 5 passed, rule breaks found</li>
+<li>Real runs: rule breaks found, one coaching round lifted the score 0.58 → 0.80</li>
 <li>Code on GitHub</li>
 </ul>
 </div>
 <div style="display:flex;flex-direction:column;gap:20px;background:#FFFFFF;padding:44px;border-radius:16px">
 <p style="font-size:24px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#1E4D8C">Next</p>
 <ul style="font-size:28px;line-height:1.5;color:#26313D">
-<li>Finish the coaching run on the demo agent</li>
-<li>Raise the agent’s token quota</li>
+<li>Pilot on a copy of a production agent</li>
+<li>Optional BigQuery export for trends</li>
 <li>Check the AI scorecard against a human reviewer</li>
 </ul>
 </div>
 <div style="display:flex;flex-direction:column;gap:20px;background:#FFFFFF;padding:44px;border-radius:16px">
 <p style="font-size:24px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#B34A14">Limits today</p>
 <ul style="font-size:28px;line-height:1.5;color:#26313D">
-<li>Default quota allows about one agent reply a minute</li>
+<li>Scores vary run to run: use 2–3 trials</li>
 <li>Callers can’t interrupt the bot mid-sentence</li>
 <li>No keypad (press 1) input</li>
 <li>AI scores need a human spot-check</li>
 </ul>
 </div>
 </div>
-<aside>Be straightforward about maturity. The application is built and has now run end to end against a real Google CX Agent Studio voice agent that we created in our own project: six simulated calls, five passed, and the scorer found real rule breaks. The code is on GitHub. Running it surfaced practical lessons: a new project’s default quota allows roughly one agent reply per minute, so a full test run takes most of an hour until the quota is raised; that is a standard request in the Google Cloud console. The coaching run on the demo agent is in progress. Remaining limits: simulated callers cannot interrupt the bot, keypad input is not simulated, and the AI scorecard should still be checked against a human reviewer before anyone relies on the numbers.</aside>
+<aside>Be straightforward about maturity. The application is built and has now run end to end against a real Google CX Agent Studio voice agent that we created in our own project: six simulated calls, five passed, and the scorer found real rule breaks. The code is on GitHub. Running it surfaced practical lessons. A new project’s default quota allowed roughly one agent reply per minute; we requested an increase and it was approved within minutes. One coaching round then raised the practice score from 0.58 to 0.80 and the exam score from 0.78 to 0.85. Scores do vary from run to run, so we use repeated trials before trusting small gains. Remaining limits: simulated callers cannot interrupt the bot, keypad input is not simulated, and the AI scorecard should still be checked against a human reviewer before anyone relies on the numbers.</aside>
 </section>

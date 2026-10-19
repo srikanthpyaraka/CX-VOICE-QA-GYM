@@ -77,6 +77,15 @@ def validate_candidate(original: str, candidate: str) -> str | None:
     return None
 
 
+def clean_instruction(text: str) -> str:
+    """Strip wrapping the model sometimes copies from the prompt: the <<< >>> markers
+    around the current instruction, or a markdown code fence."""
+    t = (text or "").strip()
+    t = re.sub(r"^```[\w-]*\s*|\s*```$", "", t).strip()
+    t = re.sub(r"^<<<\s*|\s*>>>$", "", t).strip()
+    return t
+
+
 def propose(instruction: str, result: dict, rejected: list[str]) -> dict:
     return llm.generate_json(PROMPT.format(
         instruction=instruction,
@@ -113,7 +122,7 @@ def optimize(cx: CXAgent, agent_name: str, suite: dict, iterations: int,
         for i in range(1, iterations + 1):
             log({"type": "status", "msg": f"Iteration {i}: proposing revision"})
             p = propose(best["instruction"], best, rejected)
-            cand_instr = p.get("instruction", "")
+            cand_instr = clean_instruction(p.get("instruction", ""))
             reason = validate_candidate(original, cand_instr)
             if reason:
                 rejected.append(f"{'; '.join(p.get('changes', []))} (invalid: {reason})")

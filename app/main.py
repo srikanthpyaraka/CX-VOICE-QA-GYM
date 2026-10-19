@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from app import gym, llm, optimizer
+from app import bq, gym, llm, optimizer
 from app.cxas_client import CXAgent
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -179,6 +179,25 @@ def _tick(run):
     return on_episode
 
 
+def _export(run: dict, result: dict, **kw) -> None:
+    """Opt-in BigQuery copy (BQ_DATASET). Never fails the run."""
+    if not bq.enabled():
+        return
+    try:
+        n = bq.export(run, result, **kw)
+        msg = f"Saved {n} calls to BigQuery {bq.DATASET}"
+    except Exception as e:
+        msg = f"BigQuery export failed (results are still saved locally): {type(e).__name__}: {e}"
+    with _lock:
+        run["messages"].append(msg)
+        _save(run)
+
+
+@app.get("/api/config")
+def config():
+    return {"bigquery": bq.DATASET or None}
+
+
 @app.post("/api/runs/eval")
 def run_eval(req: RunReq):
     def target(cx, suite, run):
@@ -186,6 +205,8 @@ def run_eval(req: RunReq):
         run["result"] = gym.evaluate(cx, suite, req.use_tool_fakes, req.trials,
                                      on_episode=_tick(run), audio=req.audio(),
                                      audio_dir=AUDIO_DIR / run["id"])
+        _export(run, run["result"], outcome="evaluation",
+                instruction=cx.get_instruction(req.agent_name) if bq.enabled() else None)
     return _start("eval", req, target)
 
 
@@ -207,6 +228,12 @@ def run_optimize(req: RunReq):
                 else:
                     run["iterations"].append(ev)
                 _save(run)  # persisted immediately so the original is never lost
+            if ev["type"] == "iteration" and ev.get("result"):
+                outcome = ("baseline" if ev["iteration"] == 0 else "inconclusive" if ev.get("invalid")
+                           else "kept" if ev["accepted"] else "rejected")
+                _export(run, ev["result"], iteration=ev["iteration"], outcome=outcome,
+                        instruction=ev.get("instruction"), diagnosis=ev.get("diagnosis"),
+                        changes=ev.get("changes"))
 
         optimizer.optimize(cx, req.agent_name, suite, req.iterations,
                            req.use_tool_fakes, req.trials, log, on_episode=_tick(run),
@@ -256,7 +283,7 @@ def apply(run_id: str, body: Apply):
         match = [it for it in run["iterations"] if it["iteration"] == body.iteration]
         if not match:
             raise HTTPException(404, "iteration not found")
-        instr = match[0]["instruction"]
+        instr = optimizer.clean_instruction(match[0]["instruction"])  # older runs kept prompt markers
     _cx().set_instruction(run["agent_name"], instr)
     run["applied_iteration"] = body.iteration
     _save(run)

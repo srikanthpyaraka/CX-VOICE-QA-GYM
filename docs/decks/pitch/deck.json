@@ -3,7 +3,7 @@
   "createdOnFiles": {"v": 1, "at": "2026-10-19T09:00:00Z"},
   "lists": "css",
   "title": "Voice QA Gym",
-  "order": ["cover", "problem", "idea", "loop", "connect", "inputs", "call", "scorecard", "improve", "safety", "demo", "where", "status", "pilot"],
+  "order": ["cover", "problem", "idea", "loop", "connect", "inputs", "call", "scorecard", "improve", "safety", "demo", "coach", "where", "status", "pilot"],
   "sections": {
     "s1": {"description": "Why voice bots need a better way to be tested", "start": "cover"},
     "s2": {"description": "How the tool works, step by step", "start": "idea"},
